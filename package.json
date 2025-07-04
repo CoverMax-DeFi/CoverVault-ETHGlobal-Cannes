@@ -6,13 +6,16 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "deploy": "npx hardhat ignition deploy ignition/modules/Lock.ts",
-    "deploy:localhost": "npx hardhat ignition deploy ignition/modules/Lock.ts --network localhost",
+    "deploy": "npx hardhat ignition deploy ignition/modules/RiskToken.ts",
+    "deploy:localhost": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network localhost",
+    "deploy:flow-testnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowTestnet",
+    "deploy:flow-mainnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowMainnet",
     "node": "npx hardhat node",
     "clean": "npx hardhat clean",
     "coverage": "npx hardhat coverage",
     "size": "npx hardhat size-contracts",
-    "console": "npx hardhat console"
+    "console": "npx hardhat console",
+    "console:flow-testnet": "npx hardhat console --network flowTestnet"
   },
   "repository": {
     "type": "git",
@@ -28,10 +31,12 @@
   "homepage": "https://github.com/zalatar242/CoverVault#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "@onflow/fcl": "^1.19.0",
+    "@onflow/flow-cadut": "^0.2.0",
+    "dotenv": "^17.0.1",
     "hardhat": "^2.25.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.3.0",
-    "openzeppelin": "^1.0.0"
+    "@openzeppelin/contracts": "^5.3.0"
   }
 }
