@@ -1,0 +1,33 @@
+{
+  "name": "covervault",
+  "version": "1.0.0",
+  "description": "CoverVault - A decentralized insurance protocol",
+  "main": "hardhat.config.ts",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat ignition deploy ignition/modules/Lock.ts",
+    "deploy:localhost": "npx hardhat ignition deploy ignition/modules/Lock.ts --network localhost",
+    "node": "npx hardhat node",
+    "clean": "npx hardhat clean",
+    "coverage": "npx hardhat coverage",
+    "size": "npx hardhat size-contracts",
+    "console": "npx hardhat console"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zalatar242/CoverVault.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zalatar242/CoverVault/issues"
+  },
+  "homepage": "https://github.com/zalatar242/CoverVault#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "hardhat": "^2.25.0"
+  }
+}
