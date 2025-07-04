@@ -12,7 +12,7 @@ contract RiskVault is Ownable {
     address public immutable seniorToken; // Senior insurance token contract
     address public immutable juniorToken; // Junior insurance token contract
     address public immutable aUSDC; // Mock aUSDC asset
-    address public immutable aUSDT; // Mock aUSDT asset
+    address public immutable cUSDT; // Mock cUSDT asset
 
     /* Mathematical Constants */
     uint256 private constant PRECISION_FACTOR = 1e27; // High precision calculations
@@ -27,9 +27,6 @@ contract RiskVault is Ownable {
         /* Protocol State Management */
     uint256 public totalInsuranceTokens; // Total senior + junior tokens outstanding
     bool public protocolPaused; // Emergency circuit breaker
-    uint256 public maxLiquidityWithdrawalPercent = 20; // Maximum withdrawal during coverage (20%)
-    uint256 public currentPeriodWithdrawals; // Tracking withdrawals in current coverage period
-    uint256 public coveragePeriodBaseAmount; // Reference amount for withdrawal limits
 
 
     /* Insurance Pool Management */
@@ -65,10 +62,10 @@ contract RiskVault is Ownable {
     error ProtocolCurrentlyPaused();
     error InvalidAssetAddress();
     error UnequalTokenAmountsDuringCoverage();
-    error ExceedsMaxLiquidityWithdrawal();
+    
     error NoTokensToRedeem();
     error NoFundsRecovered();
-    error InvalidWithdrawalLimit();
+    
     error TransferOperationFailed();
     error InvalidClaimId();
     error ClaimAlreadyProcessed();
@@ -99,14 +96,14 @@ contract RiskVault is Ownable {
         uint256 amount
     );
     event ProtocolPauseStateChanged(bool paused);
-    event LiquidityWithdrawalLimitUpdated(uint256 newLimit);
-    event CoveragePeriodInitiated(uint256 totalDeposited);
+    
+    
     event AssetPoolStatusChanged(address indexed asset, bool isActive);
 
-    constructor(address _aUSDC, address _aUSDT) Ownable(msg.sender) {
-        if (_aUSDC == address(0) || _aUSDT == address(0)) revert InvalidAssetAddress();
+    constructor(address _aUSDC, address _cUSDT) Ownable(msg.sender) {
+        if (_aUSDC == address(0) || _cUSDT == address(0)) revert InvalidAssetAddress();
         aUSDC = _aUSDC;
-        aUSDT = _aUSDT;
+        cUSDT = _cUSDT;
         
         // Deploy insurance tokenization contracts
         seniorToken = address(new RiskToken("CoverMax Senior Insurance Token", "CM-SENIOR"));
@@ -125,14 +122,13 @@ contract RiskVault is Ownable {
             isActive: true
         });
         
-        assetPools[_aUSDT] = AssetPool({
+        assetPools[_cUSDT] = AssetPool({
             totalDeposited: 0,
             totalClaimed: 0,
             isActive: true
         });
         
-        // Initialize coverage period state
-        coveragePeriodBaseAmount = 0;
+        
     }
 
     /* Access Control Modifiers */
@@ -148,7 +144,7 @@ contract RiskVault is Ownable {
      * @return isSupported True if the asset is supported
      */
     function _isAssetSupported(address asset) internal view returns (bool isSupported) {
-        return asset == aUSDC || asset == aUSDT;
+        return asset == aUSDC || asset == cUSDT;
     }
 
     /**
@@ -156,7 +152,7 @@ contract RiskVault is Ownable {
      * @return totalValue The combined value of all deposited assets
      */
     function _getTotalPoolValue() internal view returns (uint256 totalValue) {
-        return assetPools[aUSDC].totalDeposited + assetPools[aUSDT].totalDeposited;
+        return assetPools[aUSDC].totalDeposited + assetPools[cUSDT].totalDeposited;
     }
 
     /**
@@ -165,7 +161,7 @@ contract RiskVault is Ownable {
      * @return totalCoverage The total insurance coverage amount
      */
     function _getUserTotalCoverage(address user) internal view returns (uint256 totalCoverage) {
-        return userDeposits[user][aUSDC] + userDeposits[user][aUSDT];
+        return userDeposits[user][aUSDC] + userDeposits[user][cUSDT];
     }
 
     // Insurance Coverage Calculations
@@ -186,14 +182,14 @@ contract RiskVault is Ownable {
      * @param user The user redeeming tokens
      * @param redemptionShare The proportional share being redeemed
      * @return aUSDCAmount Amount to redeem from aUSDC pool
-     * @return aUSDTAmount Amount to redeem from aUSDT pool
+     * @return cUSDTAmount Amount to redeem from cUSDT pool
      */
     function _calculateAssetRedemption(
         address user,
         uint256 redemptionShare
-    ) internal view returns (uint256 aUSDCAmount, uint256 aUSDTAmount) {
+    ) internal view returns (uint256 aUSDCAmount, uint256 cUSDTAmount) {
         aUSDCAmount = (userDeposits[user][aUSDC] * redemptionShare) / PRECISION_FACTOR;
-        aUSDTAmount = (userDeposits[user][aUSDT] * redemptionShare) / PRECISION_FACTOR;
+        cUSDTAmount = (userDeposits[user][cUSDT] * redemptionShare) / PRECISION_FACTOR;
     }
 
     /**
@@ -265,20 +261,10 @@ contract RiskVault is Ownable {
         seniorClaimStart = coveragePhaseEnd + 1 days;
         finalClaimDeadline = seniorClaimStart + 1 days;
 
-        // Reset coverage period tracking
-        currentPeriodWithdrawals = 0;
-        coveragePeriodBaseAmount = 0;
+        
     }
 
-    /**
-     * @dev Monitors and initializes coverage period metrics
-     */
-    function _initializeCoveragePeriod() internal {
-        if (coveragePeriodBaseAmount == 0 && block.timestamp >= depositPhaseEnd) {
-            coveragePeriodBaseAmount = _getTotalPoolValue();
-            emit CoveragePeriodInitiated(_getTotalPoolValue());
-        }
-    }
+    
 
     /**
      * @dev Toggles protocol emergency pause mechanism
@@ -288,15 +274,7 @@ contract RiskVault is Ownable {
         emit ProtocolPauseStateChanged(protocolPaused);
     }
 
-    /**
-     * @dev Updates maximum liquidity withdrawal percentage during coverage
-     * @param newLimitPercent New percentage limit (e.g., 20 for 20%)
-     */
-    function updateLiquidityWithdrawalLimit(uint256 newLimitPercent) external onlyOwner {
-        if (newLimitPercent > 100) revert InvalidWithdrawalLimit();
-        maxLiquidityWithdrawalPercent = newLimitPercent;
-        emit LiquidityWithdrawalLimitUpdated(newLimitPercent);
-    }
+    
 
     // External Insurance Functions
     /**
@@ -312,7 +290,7 @@ contract RiskVault is Ownable {
 
     /**
      * @dev Deposits yield-bearing assets for insurance coverage
-     * @param asset The yield-bearing asset to deposit (aUSDC or aUSDT)
+     * @param asset The yield-bearing asset to deposit (aUSDC or cUSDT)
      * @param depositAmount Amount of asset to deposit for insurance
      */
     function depositAsset(address asset, uint256 depositAmount) external whenNotPaused {
@@ -336,7 +314,7 @@ contract RiskVault is Ownable {
 
         // Issue insurance tokens
         _issueInsuranceTokens(msg.sender, depositAmount);
-        _initializeCoveragePeriod();
+        
         
         emit AssetDeposited(msg.sender, asset, depositAmount);
     }
@@ -428,7 +406,7 @@ contract RiskVault is Ownable {
         }
         
         // Initialize coverage period tracking if needed
-        _initializeCoveragePeriod();
+        
         
         // During coverage phase, enforce equal token redemption amounts
         if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd) {
@@ -439,30 +417,21 @@ contract RiskVault is Ownable {
         uint256 redemptionShare = _calculateRedemptionShare(totalTokensToRedeem);
         
         // Calculate redemption amounts from each asset pool
-        (uint256 aUSDCAmount, uint256 aUSDTAmount) = _calculateAssetRedemption(msg.sender, redemptionShare);
+        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateAssetRedemption(msg.sender, redemptionShare);
         
-        uint256 totalRecoveryValue = aUSDCAmount + aUSDTAmount;
-
-        // Enforce liquidity withdrawal limits during coverage phase
-        if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd && coveragePeriodBaseAmount > 0) {
-            uint256 maxAllowedRecovery = (coveragePeriodBaseAmount * maxLiquidityWithdrawalPercent) / 100;
-            if (currentPeriodWithdrawals + totalRecoveryValue > maxAllowedRecovery) {
-                revert ExceedsMaxLiquidityWithdrawal();
-            }
-            currentPeriodWithdrawals += totalRecoveryValue;
-        }
-
+        uint256 totalRecoveryValue = aUSDCAmount + cUSDTAmount;
+        
         if (totalRecoveryValue == 0) revert NoFundsRecovered();
 
         // Update user deposits and pool tracking
         userDeposits[msg.sender][aUSDC] -= aUSDCAmount;
-        userDeposits[msg.sender][aUSDT] -= aUSDTAmount;
+        userDeposits[msg.sender][cUSDT] -= cUSDTAmount;
         
         if (aUSDCAmount > 0) {
             assetPools[aUSDC].totalDeposited -= aUSDCAmount;
         }
-        if (aUSDTAmount > 0) {
-            assetPools[aUSDT].totalDeposited -= aUSDTAmount;
+        if (cUSDTAmount > 0) {
+            assetPools[cUSDT].totalDeposited -= cUSDTAmount;
         }
 
         _burnInsuranceTokens(msg.sender, seniorAmount, juniorAmount);
@@ -473,15 +442,15 @@ contract RiskVault is Ownable {
                 revert TransferOperationFailed();
             }
         }
-        if (aUSDTAmount > 0) {
-            if (!IERC20(aUSDT).transfer(msg.sender, aUSDTAmount)) {
+        if (cUSDTAmount > 0) {
+            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
                 revert TransferOperationFailed();
             }
         }
 
         emit TokensRedeemed(msg.sender, aUSDC, seniorAmount, juniorAmount, aUSDCAmount);
-        if (aUSDTAmount > 0) {
-            emit TokensRedeemed(msg.sender, aUSDT, 0, 0, aUSDTAmount);
+        if (cUSDTAmount > 0) {
+            emit TokensRedeemed(msg.sender, cUSDT, 0, 0, cUSDTAmount);
         }
     }
 
@@ -551,7 +520,7 @@ contract RiskVault is Ownable {
         uint256 aUSDCDeposits,
         uint256 aUSDTDeposits
     ) {
-        return (userDeposits[user][aUSDC], userDeposits[user][aUSDT]);
+        return (userDeposits[user][aUSDC], userDeposits[user][cUSDT]);
     }
 
     /**
