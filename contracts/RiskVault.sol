@@ -6,8 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./RiskToken.sol";
 import "./IRiskToken.sol";
 
-/// @title CoverMax Protocol - Claims System
-/// @notice Added insurance claim submission and processing
+/// @title CoverMax Protocol - Liquidity Controls
+/// @notice Added liquidity withdrawal limits and advanced features
 contract RiskVault is Ownable {
     /* Protocol Configuration */
     address public immutable seniorToken;
@@ -28,6 +28,9 @@ contract RiskVault is Ownable {
     /* State Management */
     uint256 public totalInsuranceTokens;
     bool public protocolPaused;
+    uint256 public maxLiquidityWithdrawalPercent = 20;
+    uint256 public currentPeriodWithdrawals;
+    uint256 public coveragePeriodBaseAmount;
     mapping(address => mapping(address => uint256)) public userDeposits;
     
     /* Pool Management */
@@ -61,6 +64,8 @@ contract RiskVault is Ownable {
     event InsuranceClaimProcessed(uint256 indexed claimId, bool approved);
     event InsuranceClaimPaid(uint256 indexed claimId, address indexed claimant, uint256 amount);
     event ProtocolPauseStateChanged(bool paused);
+    event LiquidityWithdrawalLimitUpdated(uint256 newLimit);
+    event CoveragePeriodInitiated(uint256 totalDeposited);
     
     /* Modifiers */
     modifier whenNotPaused() {
@@ -83,6 +88,8 @@ contract RiskVault is Ownable {
         
         assetPools[_aUSDC] = AssetPool({totalDeposited: 0, totalClaimed: 0, isActive: true});
         assetPools[_aUSDT] = AssetPool({totalDeposited: 0, totalClaimed: 0, isActive: true});
+        
+        coveragePeriodBaseAmount = 0;
     }
     
     function _initializeNewProtocolCycle() internal {
@@ -90,6 +97,31 @@ contract RiskVault is Ownable {
         coveragePhaseEnd = depositPhaseEnd + 5 days;
         seniorClaimStart = coveragePhaseEnd + 1 days;
         finalClaimDeadline = seniorClaimStart + 1 days;
+        
+        currentPeriodWithdrawals = 0;
+        coveragePeriodBaseAmount = 0;
+    }
+    
+    function _initializeCoveragePeriod() internal {
+        if (coveragePeriodBaseAmount == 0 && block.timestamp >= depositPhaseEnd) {
+            coveragePeriodBaseAmount = _getTotalPoolValue();
+            emit CoveragePeriodInitiated(_getTotalPoolValue());
+        }
+    }
+    
+    function _getTotalPoolValue() internal view returns (uint256) {
+        return assetPools[aUSDC].totalDeposited + assetPools[aUSDT].totalDeposited;
+    }
+    
+    function toggleProtocolPause() external onlyOwner {
+        protocolPaused = !protocolPaused;
+        emit ProtocolPauseStateChanged(protocolPaused);
+    }
+    
+    function updateLiquidityWithdrawalLimit(uint256 newLimitPercent) external onlyOwner {
+        require(newLimitPercent <= 100, "Invalid withdrawal limit");
+        maxLiquidityWithdrawalPercent = newLimitPercent;
+        emit LiquidityWithdrawalLimitUpdated(newLimitPercent);
     }
     
     function _issueInsuranceTokens(address recipient, uint256 totalAmount) internal {
@@ -128,13 +160,11 @@ contract RiskVault is Ownable {
         userDeposits[msg.sender][asset] += amount;
         
         _issueInsuranceTokens(msg.sender, amount);
+        _initializeCoveragePeriod();
         
         emit AssetDeposited(msg.sender, asset, amount);
     }
     
-    /**
-     * @dev Submit insurance claim
-     */
     function submitInsuranceClaim(address asset, uint256 amount, bytes32 evidence) external whenNotPaused returns (uint256) {
         require(asset == aUSDC || asset == aUSDT, "Unsupported asset");
         require(amount > 0, "Invalid amount");
@@ -156,9 +186,6 @@ contract RiskVault is Ownable {
         return claimId;
     }
     
-    /**
-     * @dev Process insurance claim
-     */
     function processInsuranceClaim(uint256 claimId, bool approve) external onlyOwner {
         require(claimId < insuranceClaims.length, "Invalid claim ID");
         
@@ -195,6 +222,8 @@ contract RiskVault is Ownable {
             _initializeNewProtocolCycle();
         }
         
+        _initializeCoveragePeriod();
+        
         if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd) {
             require(seniorAmount == juniorAmount, "Equal amounts required during coverage");
         }
@@ -207,7 +236,15 @@ contract RiskVault is Ownable {
         uint256 aUSDCAmount = (userDeposits[msg.sender][aUSDC] * redemptionShare) / PRECISION_FACTOR;
         uint256 aUSDTAmount = (userDeposits[msg.sender][aUSDT] * redemptionShare) / PRECISION_FACTOR;
         
-        require(aUSDCAmount + aUSDTAmount > 0, "No funds to recover");
+        uint256 totalRecoveryValue = aUSDCAmount + aUSDTAmount;
+        require(totalRecoveryValue > 0, "No funds to recover");
+        
+        // Enforce liquidity withdrawal limits during coverage
+        if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd && coveragePeriodBaseAmount > 0) {
+            uint256 maxAllowedRecovery = (coveragePeriodBaseAmount * maxLiquidityWithdrawalPercent) / 100;
+            require(currentPeriodWithdrawals + totalRecoveryValue <= maxAllowedRecovery, "Exceeds withdrawal limit");
+            currentPeriodWithdrawals += totalRecoveryValue;
+        }
         
         userDeposits[msg.sender][aUSDC] -= aUSDCAmount;
         userDeposits[msg.sender][aUSDT] -= aUSDTAmount;
@@ -224,6 +261,20 @@ contract RiskVault is Ownable {
         if (aUSDTAmount > 0) {
             require(IERC20(aUSDT).transfer(msg.sender, aUSDTAmount), "Transfer failed");
             emit TokensRedeemed(msg.sender, aUSDT, 0, 0, aUSDTAmount);
+        }
+    }
+    
+    function redeemAllTokens() external whenNotPaused {
+        uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(msg.sender);
+        uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(msg.sender);
+        
+        require(seniorBalance > 0 || juniorBalance > 0, "No tokens to redeem");
+        
+        if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd) {
+            uint256 minBalance = seniorBalance < juniorBalance ? seniorBalance : juniorBalance;
+            redeemTokens(minBalance, minBalance);
+        } else {
+            redeemTokens(seniorBalance, juniorBalance);
         }
     }
     
@@ -249,6 +300,10 @@ contract RiskVault is Ownable {
         return 4;
     }
     
+    function getUserDeposits(address user) external view returns (uint256, uint256) {
+        return (userDeposits[user][aUSDC], userDeposits[user][aUSDT]);
+    }
+    
     function getUserInsuranceCoverage(address user) external view returns (uint256) {
         uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(user);
         uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(user);
@@ -256,11 +311,15 @@ contract RiskVault is Ownable {
         
         if (totalInsuranceTokens == 0) return 0;
         
-        uint256 totalValue = assetPools[aUSDC].totalDeposited + assetPools[aUSDT].totalDeposited;
+        uint256 totalValue = _getTotalPoolValue();
         return (totalValue * totalTokens) / totalInsuranceTokens;
     }
     
     function getTotalValueLocked() external view returns (uint256) {
-        return assetPools[aUSDC].totalDeposited + assetPools[aUSDT].totalDeposited;
+        return _getTotalPoolValue();
+    }
+    
+    function isAssetSupported(address asset) external view returns (bool) {
+        return asset == aUSDC || asset == aUSDT;
     }
 }
