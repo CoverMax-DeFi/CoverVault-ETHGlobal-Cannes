@@ -7,108 +7,76 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./RiskToken.sol";
 import "./IRiskToken.sol";
 
-/// @title RiskVault Protocol
+/// @title CoverVault
+/// @notice A decentralized insurance protocol with tradeable risk tokens and time-based lifecycle phases
 contract RiskVault is Ownable, ReentrancyGuard {
-    /* Protocol Configuration */
-    address public immutable seniorToken; // Senior insurance token contract
-    address public immutable juniorToken; // Junior insurance token contract
-    address public immutable aUSDC; // Mock aUSDC asset
-    address public immutable cUSDT; // Mock cUSDT asset
+    /* Protocol Phases */
+    enum Phase {
+        DEPOSIT,      // Phase 1: Deposit Period (2 days)
+        COVERAGE,       // Phase 2: Active Coverage Period (3 days) 
+        CLAIMS,       // Phase 3: Claims Period (1 day)
+        FINAL_CLAIMS  // Phase 4: Final Claims Period (1 day)
+    }
 
-    /* Mathematical Constants */
-    uint256 private constant PRECISION_FACTOR = 1e27; // High precision calculations
+    /* Core Protocol Assets */
+    address public immutable seniorToken; // CM-Senior token contract
+    address public immutable juniorToken; // CM-Junior token contract
+    address public immutable aUSDC; // AUSDC yield token
+    address public immutable cUSDT; // CUSDT yield token
+
+    /* Protocol Constants */
     uint256 private constant MIN_DEPOSIT_AMOUNT = 10; // Minimum deposit threshold
+    uint256 private constant DEPOSIT_PHASE_DURATION = 2 days;
+    uint256 private constant COVERAGE_PHASE_DURATION = 3 days;
+    uint256 private constant SENIOR_CLAIMS_DURATION = 1 days;
+    uint256 private constant FINAL_CLAIMS_DURATION = 1 days;
 
-    /* Protocol Lifecycle Phases */
-    uint256 public depositPhaseEnd; // End of deposit phase
-    uint256 public coveragePhaseEnd; // End of coverage phase
-    uint256 public seniorClaimStart; // Senior token claim period start
-    uint256 public finalClaimDeadline; // Final claim deadline for all tokens
-
-        /* Protocol State Management */
-    uint256 public totalInsuranceTokens; // Total senior + junior tokens outstanding
-    bool public protocolPaused; // Emergency circuit breaker
-
-
-    /* Insurance Pool Management */
-    struct AssetPool {
-        uint256 totalDeposited; // Total amount deposited for this asset
-        uint256 totalClaimed; // Total insurance claims paid for this asset
-        bool isActive; // Pool status
-    }
+    /* Protocol State */
+    uint256 public totalTokensIssued; // Total CM-Senior + CM-Junior tokens outstanding
+    bool public emergencyMode; // Emergency mode flag for prioritized withdrawals
     
-    mapping(address => AssetPool) public assetPools; // Asset address => pool info
-    mapping(address => mapping(address => uint256)) public userDeposits; // user => asset => amount
+    /* Lifecycle Management */
+    Phase public currentPhase; // Current protocol phase
+    uint256 public phaseStartTime; // When current phase started
+    uint256 public cycleStartTime; // When the current cycle started
 
-
-    /* Insurance Claim Management */
-    enum ClaimStatus { Pending, Approved, Rejected, Paid }
-    
-    struct InsuranceClaim {
-        address claimant;
-        address asset;
-        uint256 amount;
-        uint256 timestamp;
-        ClaimStatus status;
-        bytes32 evidence;
-    }
-    
-    InsuranceClaim[] public insuranceClaims;
-    mapping(address => uint256[]) public userClaims; // user => claim IDs
+    /* Vault Balances */
+    uint256 public aUSDCBalance; // Total aUSDC held in vault
+    uint256 public cUSDTBalance; // Total cUSDT held in vault
 
     /* Custom Errors */
     error InsufficientDepositAmount();
     error UnevenDepositAmount();
     error UnsupportedAsset();
-    error ProtocolCurrentlyPaused();
     error InvalidAssetAddress();
-    error UnequalTokenAmountsDuringCoverage();
-    
-    error NoTokensToRedeem();
-    error NoFundsRecovered();
-    
+    error NoTokensToWithdraw();
+    error NoFundsToWithdraw();
     error TransferOperationFailed();
-    error InvalidClaimId();
-    error ClaimAlreadyProcessed();
-    error InsufficientPoolBalance();
+    error InsufficientTokenBalance();
+    error EmergencyModeActive();
+    error EmergencyModeNotActive();
+    error InvalidPhaseForDeposit();
+    error InvalidPhaseForWithdrawal();
+    error OnlySeniorTokensAllowed();
+    error PhaseTransitionNotReady();
+    error EqualAmountsRequired();
 
     /* Protocol Events */
-    event AssetDeposited(address indexed depositor, address indexed asset, uint256 amount);
-    event TokensRedeemed(
-        address indexed redeemer,
-        address indexed asset,
-        uint256 seniorAmount,
-        uint256 juniorAmount,
-        uint256 recoveredAmount
-    );
-    event InsuranceClaimSubmitted(
-        uint256 indexed claimId,
-        address indexed claimant,
-        address indexed asset,
-        uint256 amount
-    );
-    event InsuranceClaimProcessed(
-        uint256 indexed claimId,
-        bool approved
-    );
-    event InsuranceClaimPaid(
-        uint256 indexed claimId,
-        address indexed claimant,
-        uint256 amount
-    );
-    event ProtocolPauseStateChanged(bool paused);
-    
-    
-    event AssetPoolStatusChanged(address indexed asset, bool isActive);
+    event AssetDeposited(address indexed depositor, address indexed asset, uint256 amount, uint256 tokensIssued);
+    event TokensWithdrawn(address indexed withdrawer, uint256 seniorAmount, uint256 juniorAmount, uint256 aUSDCAmount, uint256 cUSDTAmount);
+    event EmergencyWithdrawal(address indexed withdrawer, uint256 seniorAmount, address preferredAsset, uint256 amount);
+    event EmergencyModeToggled(bool emergencyMode);
+    event PhaseTransitioned(uint8 indexed fromPhase, uint8 indexed toPhase, uint256 timestamp);
+    event CycleStarted(uint256 indexed cycleNumber, uint256 startTime);
 
     constructor(address _aUSDC, address _cUSDT) Ownable(msg.sender) {
         if (_aUSDC == address(0) || _cUSDT == address(0)) revert InvalidAssetAddress();
         aUSDC = _aUSDC;
         cUSDT = _cUSDT;
         
-        // Deploy insurance tokenization contracts and transfer ownership to this vault
-        RiskToken _seniorToken = new RiskToken("CoverVault Senior Insurance Token", "CM-SENIOR");
-        RiskToken _juniorToken = new RiskToken("CoverVault Junior Insurance Token", "CM-JUNIOR");
+        // Deploy CM tokens and transfer ownership to this vault
+        RiskToken _seniorToken = new RiskToken("CoverVault Senior Token", "CM-SENIOR");
+        RiskToken _juniorToken = new RiskToken("CoverVault Junior Token", "CM-JUNIOR");
         
         // Transfer ownership to this vault for proper access control
         _seniorToken.transferOwnership(address(this));
@@ -116,38 +84,92 @@ contract RiskVault is Ownable, ReentrancyGuard {
         
         seniorToken = address(_seniorToken);
         juniorToken = address(_juniorToken);
-
-        // Initialize protocol lifecycle phases
-        depositPhaseEnd = block.timestamp + 2 days;
-        coveragePhaseEnd = depositPhaseEnd + 5 days;
-        seniorClaimStart = coveragePhaseEnd + 1 days;
-        finalClaimDeadline = seniorClaimStart + 1 days;
         
-        // Initialize asset pools
-        assetPools[_aUSDC] = AssetPool({
-            totalDeposited: 0,
-            totalClaimed: 0,
-            isActive: true
-        });
+        // Initialize lifecycle - start in DEPOSIT phase
+        currentPhase = Phase.DEPOSIT;
+        phaseStartTime = block.timestamp;
+        cycleStartTime = block.timestamp;
         
-        assetPools[_cUSDT] = AssetPool({
-            totalDeposited: 0,
-            totalClaimed: 0,
-            isActive: true
-        });
-        
-        
+        emit CycleStarted(1, block.timestamp);
+        emit PhaseTransitioned(0, uint8(Phase.DEPOSIT), block.timestamp);
     }
 
     /* Access Control Modifiers */
-    modifier whenNotPaused() {
-        if (protocolPaused) revert ProtocolCurrentlyPaused();
+    modifier whenNotEmergency() {
+        if (emergencyMode) revert EmergencyModeActive();
         _;
     }
 
-    // Insurance Asset Management
+    modifier onlyDuringPhase(Phase requiredPhase) {
+        _updatePhaseIfNeeded();
+        if (currentPhase != requiredPhase) {
+            if (requiredPhase == Phase.DEPOSIT) revert InvalidPhaseForDeposit();
+            else revert InvalidPhaseForWithdrawal();
+        }
+        _;
+    }
+
+    modifier onlyDuringPhases(Phase phase1, Phase phase2) {
+        _updatePhaseIfNeeded();
+        if (currentPhase != phase1 && currentPhase != phase2) {
+            revert InvalidPhaseForWithdrawal();
+        }
+        _;
+    }
+
+    // Phase Management
     /**
-     * @dev Validates if an asset is supported for insurance coverage
+     * @dev Updates the current phase based on elapsed time
+     */
+    function _updatePhaseIfNeeded() internal {
+        uint256 timeElapsed = block.timestamp - phaseStartTime;
+        Phase oldPhase = currentPhase;
+        
+        if (currentPhase == Phase.DEPOSIT && timeElapsed >= DEPOSIT_PHASE_DURATION) {
+            currentPhase = Phase.COVERAGE;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        } else if (currentPhase == Phase.COVERAGE && timeElapsed >= COVERAGE_PHASE_DURATION) {
+            currentPhase = Phase.CLAIMS;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        } else if (currentPhase == Phase.CLAIMS && timeElapsed >= SENIOR_CLAIMS_DURATION) {
+            currentPhase = Phase.FINAL_CLAIMS;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        }
+    }
+
+    /**
+     * @dev Manually trigger phase transition (owner only for emergency situations)
+     */
+    function forcePhaseTransition() external onlyOwner {
+        _updatePhaseIfNeeded();
+    }
+
+    /**
+     * @dev Start a new cycle - resets to DEPOSIT phase
+     */
+    function startNewCycle() external onlyOwner {
+        _updatePhaseIfNeeded();
+        if (currentPhase != Phase.FINAL_CLAIMS) revert PhaseTransitionNotReady();
+        
+        // Check if final claims period has ended
+        uint256 timeElapsed = block.timestamp - phaseStartTime;
+        if (timeElapsed < FINAL_CLAIMS_DURATION) revert PhaseTransitionNotReady();
+        
+        Phase oldPhase = currentPhase;
+        currentPhase = Phase.DEPOSIT;
+        phaseStartTime = block.timestamp;
+        cycleStartTime = block.timestamp;
+        
+        emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        emit CycleStarted(2, block.timestamp); // Simplified cycle counting
+    }
+
+    // Asset Management
+    /**
+     * @dev Validates if an asset is supported
      * @param asset The asset address to validate
      * @return isSupported True if the asset is supported
      */
@@ -156,292 +178,146 @@ contract RiskVault is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Gets total value across all asset pools
+     * @dev Gets total value locked in the vault
      * @return totalValue The combined value of all deposited assets
      */
-    function _getTotalPoolValue() internal view returns (uint256 totalValue) {
-        return assetPools[aUSDC].totalDeposited + assetPools[cUSDT].totalDeposited;
+    function _getTotalVaultValue() internal view returns (uint256 totalValue) {
+        return aUSDCBalance + cUSDTBalance;
     }
 
+    // Token Management
     /**
-     * @dev Calculates user's total insurance coverage across all assets
-     * @param user The user address to calculate coverage for
-     * @return totalCoverage The total insurance coverage amount
-     */
-    function _getUserTotalCoverage(address user) internal view returns (uint256 totalCoverage) {
-        return userDeposits[user][aUSDC] + userDeposits[user][cUSDT];
-    }
-
-    // Insurance Coverage Calculations
-    /**
-     * @dev Calculates the proportional redemption share for given token amounts
-     * @param totalTokensToRedeem The total insurance tokens being redeemed
-     * @return proportionalShare The calculated share using high precision math
-     */
-    function _calculateRedemptionShare(
-        uint256 totalTokensToRedeem
-    ) internal view returns (uint256 proportionalShare) {
-        if (totalInsuranceTokens == 0) return 0;
-        return (totalTokensToRedeem * PRECISION_FACTOR) / totalInsuranceTokens;
-    }
-
-    /**
-     * @dev Calculates redemption amounts from each asset pool
-     * @param user The user redeeming tokens
-     * @param redemptionShare The proportional share being redeemed
-     * @return aUSDCAmount Amount to redeem from aUSDC pool
-     * @return cUSDTAmount Amount to redeem from cUSDT pool
-     */
-    function _calculateAssetRedemption(
-        address user,
-        uint256 redemptionShare
-    ) internal view returns (uint256 aUSDCAmount, uint256 cUSDTAmount) {
-        // Calculate proportional redemption - now simple with 18 decimals
-        aUSDCAmount = (userDeposits[user][aUSDC] * redemptionShare) / PRECISION_FACTOR;
-        cUSDTAmount = (userDeposits[user][cUSDT] * redemptionShare) / PRECISION_FACTOR;
-    }
-
-    /**
-     * @dev Calculates total insurance coverage for a user
-     * @param user The user to calculate coverage for
-     * @param seniorTokens Amount of senior tokens held
-     * @param juniorTokens Amount of junior tokens held
-     * @return totalCoverage The total insurance coverage amount
-     */
-    function _calculateInsuranceCoverage(
-        address user,
-        uint256 seniorTokens,
-        uint256 juniorTokens
-    ) internal view returns (uint256 totalCoverage) {
-        uint256 totalTokens = seniorTokens + juniorTokens;
-        if (totalInsuranceTokens == 0) return 0;
-        
-        uint256 userShare = (totalTokens * PRECISION_FACTOR) / totalInsuranceTokens;
-        totalCoverage = (_getTotalPoolValue() * userShare) / PRECISION_FACTOR;
-    }
-
-    // Insurance Token Management
-    /**
-     * @dev Issues dual-tier insurance tokens proportional to asset deposit
+     * @dev Issues CM tokens (equal amounts of senior and junior)
      * @param recipient Address to receive the newly issued tokens
-     * @param totalAmount Total token amount to issue (split between senior/junior)
+     * @param totalAmount Total token amount to issue (split equally between senior/junior)
      */
-    function _issueInsuranceTokens(address recipient, uint256 totalAmount) internal {
-        uint256 tokenTierAmount = totalAmount >> 1; // Gas-optimized division by 2
-        IRiskToken(seniorToken).mint(recipient, tokenTierAmount);
-        IRiskToken(juniorToken).mint(recipient, tokenTierAmount);
-        // Remove unsafe arithmetic - let Solidity 0.8+ handle overflow protection
-        totalInsuranceTokens += totalAmount;
+    function _issueTokens(address recipient, uint256 totalAmount) internal {
+        uint256 eachTokenAmount = totalAmount / 2; // Equal split
+        IRiskToken(seniorToken).mint(recipient, eachTokenAmount);
+        IRiskToken(juniorToken).mint(recipient, eachTokenAmount);
+        totalTokensIssued += totalAmount;
     }
 
     /**
-     * @dev Destroys insurance tokens during redemption process
+     * @dev Burns CM tokens during withdrawal
      * @param tokenHolder Address whose tokens will be burned
-     * @param seniorAmount Amount of senior tokens to destroy
-     * @param juniorAmount Amount of junior tokens to destroy
+     * @param seniorAmount Amount of senior tokens to burn
+     * @param juniorAmount Amount of junior tokens to burn
      */
-    function _burnInsuranceTokens(
+    function _burnTokens(
         address tokenHolder,
         uint256 seniorAmount,
         uint256 juniorAmount
     ) internal {
         uint256 totalToBurn = seniorAmount + juniorAmount;
-        if (totalToBurn == 0) revert NoTokensToRedeem();
+        if (totalToBurn == 0) revert NoTokensToWithdraw();
 
         if (seniorAmount > 0) {
+            if (IRiskToken(seniorToken).balanceOf(tokenHolder) < seniorAmount) {
+                revert InsufficientTokenBalance();
+            }
             IRiskToken(seniorToken).burn(tokenHolder, seniorAmount);
         }
         if (juniorAmount > 0) {
+            if (IRiskToken(juniorToken).balanceOf(tokenHolder) < juniorAmount) {
+                revert InsufficientTokenBalance();
+            }
             IRiskToken(juniorToken).burn(tokenHolder, juniorAmount);
         }
 
-        // Remove unsafe arithmetic - let Solidity 0.8+ handle underflow protection
-        totalInsuranceTokens -= totalToBurn;
+        totalTokensIssued -= totalToBurn;
     }
 
     /**
-     * @dev Resets protocol lifecycle for new operational cycle
+     * @dev Calculates proportional withdrawal amounts based on token amounts
+     * @param totalTokensToWithdraw Total tokens being withdrawn
+     * @return aUSDCAmount Amount of aUSDC to withdraw
+     * @return cUSDTAmount Amount of cUSDT to withdraw
      */
-    function _initializeNewProtocolCycle() internal {
-        depositPhaseEnd = block.timestamp + 2 days;
-        coveragePhaseEnd = depositPhaseEnd + 5 days;
-        seniorClaimStart = coveragePhaseEnd + 1 days;
-        finalClaimDeadline = seniorClaimStart + 1 days;
-
+    function _calculateWithdrawalAmounts(uint256 totalTokensToWithdraw) 
+        internal 
+        view 
+        returns (uint256 aUSDCAmount, uint256 cUSDTAmount) 
+    {
+        if (totalTokensIssued == 0) return (0, 0);
         
-    }
-
-    
-
-    /**
-     * @dev Toggles protocol emergency pause mechanism
-     */
-    function toggleProtocolPause() external onlyOwner {
-        protocolPaused = !protocolPaused;
-        emit ProtocolPauseStateChanged(protocolPaused);
-    }
-
-    
-
-    // External Insurance Functions
-    /**
-     * @dev Toggles the active status of an asset pool
-     * @param asset The asset address to toggle
-     */
-    function toggleAssetPool(address asset) external onlyOwner whenNotPaused {
-        if (!_isAssetSupported(asset)) revert UnsupportedAsset();
+        // Proportional withdrawal based on vault composition
+        uint256 totalVaultValue = _getTotalVaultValue();
+        uint256 userShare = (totalTokensToWithdraw * totalVaultValue) / totalTokensIssued;
         
-        assetPools[asset].isActive = !assetPools[asset].isActive;
-        emit AssetPoolStatusChanged(asset, assetPools[asset].isActive);
-    }
-
-    /**
-     * @dev Deposits yield-bearing assets for insurance coverage
-     * @param asset The yield-bearing asset to deposit (aUSDC or cUSDT)
-     * @param depositAmount Amount of asset to deposit for insurance
-     */
-    function depositAsset(address asset, uint256 depositAmount) external whenNotPaused nonReentrant {
-        if (block.timestamp > finalClaimDeadline) {
-            _initializeNewProtocolCycle();
+        // Calculate proportional amounts
+        if (totalVaultValue > 0) {
+            aUSDCAmount = (userShare * aUSDCBalance) / totalVaultValue;
+            cUSDTAmount = (userShare * cUSDTBalance) / totalVaultValue;
         }
-        
+    }
+
+    // Admin Functions
+    /**
+     * @dev Toggles emergency mode for prioritized senior withdrawals
+     */
+    function toggleEmergencyMode() external onlyOwner {
+        emergencyMode = !emergencyMode;
+        emit EmergencyModeToggled(emergencyMode);
+    }
+
+    // Core Vault Functions
+    /**
+     * @dev Deposits yield-bearing assets to get CM tokens (only during DEPOSIT phase)
+     * @param asset The yield-bearing asset to deposit (aUSDC or cUSDT)
+     * @param depositAmount Amount of asset to deposit
+     */
+    function depositAsset(address asset, uint256 depositAmount)
+        external
+        onlyDuringPhase(Phase.DEPOSIT)
+        whenNotEmergency
+        nonReentrant
+    {
         if (depositAmount <= MIN_DEPOSIT_AMOUNT) revert InsufficientDepositAmount();
-        if (depositAmount & 1 != 0) revert UnevenDepositAmount(); // Must be even for dual tokenization
+        if (depositAmount & 1 != 0) revert UnevenDepositAmount(); // Must be even for equal token split
         if (!_isAssetSupported(asset)) revert UnsupportedAsset();
-        if (!assetPools[asset].isActive) revert UnsupportedAsset();
 
         // Transfer asset from depositor
         if (!IERC20(asset).transferFrom(msg.sender, address(this), depositAmount)) {
             revert TransferOperationFailed();
         }
 
-        // Update pool and user tracking
-        assetPools[asset].totalDeposited += depositAmount;
-        userDeposits[msg.sender][asset] += depositAmount;
+        // Update vault balances
+        if (asset == aUSDC) {
+            aUSDCBalance += depositAmount;
+        } else {
+            cUSDTBalance += depositAmount;
+        }
 
-        // Issue insurance tokens
-        _issueInsuranceTokens(msg.sender, depositAmount);
+        // Issue CM tokens (equal amounts of senior and junior)
+        _issueTokens(msg.sender, depositAmount);
         
-        
-        emit AssetDeposited(msg.sender, asset, depositAmount);
+        emit AssetDeposited(msg.sender, asset, depositAmount, depositAmount);
     }
 
     /**
-     * @dev Submits an insurance claim for review
-     * @param asset The asset for which the claim is made
-     * @param amount The amount being claimed
-     * @param evidence Hash of evidence supporting the claim
-     * @return claimId The ID of the submitted claim
+     * @dev Withdraws tokens during SENIOR_CLAIMS phase (senior tokens only)
+     * @param seniorAmount Amount of senior tokens to withdraw
      */
-    function submitInsuranceClaim(
-        address asset,
-        uint256 amount,
-        bytes32 evidence
-    ) external whenNotPaused returns (uint256 claimId) {
-        if (!_isAssetSupported(asset)) revert UnsupportedAsset();
-        if (amount == 0) revert InsufficientDepositAmount();
-        
-        claimId = insuranceClaims.length;
-        
-        insuranceClaims.push(InsuranceClaim({
-            claimant: msg.sender,
-            asset: asset,
-            amount: amount,
-            timestamp: block.timestamp,
-            status: ClaimStatus.Pending,
-            evidence: evidence
-        }));
-        
-        userClaims[msg.sender].push(claimId);
-        
-        emit InsuranceClaimSubmitted(claimId, msg.sender, asset, amount);
-    }
+    function withdrawSeniorTokens(uint256 seniorAmount)
+        external
+        onlyDuringPhase(Phase.CLAIMS)
+        whenNotEmergency
+        nonReentrant
+    {
+        if (seniorAmount == 0) revert NoTokensToWithdraw();
 
-    /**
-     * @dev Processes an insurance claim (approve/reject)
-     * @param claimId The ID of the claim to process
-     * @param approve Whether to approve or reject the claim
-     */
-    function processInsuranceClaim(uint256 claimId, bool approve) external onlyOwner {
-        if (claimId >= insuranceClaims.length) revert InvalidClaimId();
+        // Calculate proportional withdrawal amounts
+        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(seniorAmount);
         
-        InsuranceClaim storage claim = insuranceClaims[claimId];
-        if (claim.status != ClaimStatus.Pending) revert ClaimAlreadyProcessed();
-        
-        claim.status = approve ? ClaimStatus.Approved : ClaimStatus.Rejected;
-        
-        emit InsuranceClaimProcessed(claimId, approve);
-        
-        // If approved, execute payout
-        if (approve) {
-            _executeClaimPayout(claimId);
-        }
-    }
+        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
 
-    /**
-     * @dev Executes payout for an approved insurance claim
-     * @param claimId The ID of the approved claim
-     */
-    function _executeClaimPayout(uint256 claimId) internal {
-        InsuranceClaim storage claim = insuranceClaims[claimId];
-        
-        if (claim.status != ClaimStatus.Approved) revert ClaimAlreadyProcessed();
-        if (assetPools[claim.asset].totalDeposited < claim.amount) revert InsufficientPoolBalance();
-        
-        // Update pool tracking
-        assetPools[claim.asset].totalDeposited -= claim.amount;
-        assetPools[claim.asset].totalClaimed += claim.amount;
-        
-        // Transfer asset to claimant
-        if (!IERC20(claim.asset).transfer(claim.claimant, claim.amount)) {
-            revert TransferOperationFailed();
-        }
-        
-        claim.status = ClaimStatus.Paid;
-        
-        emit InsuranceClaimPaid(claimId, claim.claimant, claim.amount);
-    }
+        // Burn only senior tokens
+        _burnTokens(msg.sender, seniorAmount, 0);
 
-    /**
-     * @dev Redeems insurance tokens for proportional share of deposited assets
-     * @param seniorAmount Amount of senior insurance tokens to redeem
-     * @param juniorAmount Amount of junior insurance tokens to redeem
-     */
-    function _executeRedemption(uint256 seniorAmount, uint256 juniorAmount) internal {
-        if (block.timestamp > finalClaimDeadline) {
-            _initializeNewProtocolCycle();
-        }
-        
-        // Initialize coverage period tracking if needed
-        
-        
-        // During coverage phase, enforce equal token redemption amounts
-        if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd) {
-            if (seniorAmount != juniorAmount) revert UnequalTokenAmountsDuringCoverage();
-        }
-
-        uint256 totalTokensToRedeem = seniorAmount + juniorAmount;
-        uint256 redemptionShare = _calculateRedemptionShare(totalTokensToRedeem);
-        
-        // Calculate redemption amounts from each asset pool
-        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateAssetRedemption(msg.sender, redemptionShare);
-        
-        uint256 totalRecoveryValue = aUSDCAmount + cUSDTAmount;
-        
-        if (totalRecoveryValue == 0) revert NoFundsRecovered();
-
-        // Update user deposits and pool tracking
-        userDeposits[msg.sender][aUSDC] -= aUSDCAmount;
-        userDeposits[msg.sender][cUSDT] -= cUSDTAmount;
-        
-        if (aUSDCAmount > 0) {
-            assetPools[aUSDC].totalDeposited -= aUSDCAmount;
-        }
-        if (cUSDTAmount > 0) {
-            assetPools[cUSDT].totalDeposited -= cUSDTAmount;
-        }
-
-        _burnInsuranceTokens(msg.sender, seniorAmount, juniorAmount);
+        // Update vault balances
+        aUSDCBalance -= aUSDCAmount;
+        cUSDTBalance -= cUSDTAmount;
 
         // Transfer assets back to user
         if (aUSDCAmount > 0) {
@@ -455,110 +331,205 @@ contract RiskVault is Ownable, ReentrancyGuard {
             }
         }
 
-        emit TokensRedeemed(msg.sender, aUSDC, seniorAmount, juniorAmount, aUSDCAmount);
-        if (cUSDTAmount > 0) {
-            emit TokensRedeemed(msg.sender, cUSDT, 0, 0, cUSDTAmount);
+        emit TokensWithdrawn(msg.sender, seniorAmount, 0, aUSDCAmount, cUSDTAmount);
+    }
+
+    /**
+     * @dev Withdraws tokens during any phase with specific conditions
+     * @param seniorAmount Amount of senior tokens to withdraw
+     * @param juniorAmount Amount of junior tokens to withdraw
+     */
+    function withdraw(uint256 seniorAmount, uint256 juniorAmount)
+        external
+        whenNotEmergency
+        nonReentrant
+    {
+        // Update phase to ensure we have current phase information
+        _updatePhaseIfNeeded();
+        
+        uint256 totalTokensToWithdraw = seniorAmount + juniorAmount;
+        if (totalTokensToWithdraw == 0) revert NoTokensToWithdraw();
+
+        // Calculate proportional withdrawal amounts
+        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(totalTokensToWithdraw);
+
+        // Check phase-specific withdrawal conditions
+        if (currentPhase == Phase.CLAIMS && emergencyMode) {
+            // During senior claims in emergency mode, only senior tokens allowed
+            if (juniorAmount > 0) revert OnlySeniorTokensAllowed();
+        } else if (currentPhase != Phase.CLAIMS && currentPhase != Phase.FINAL_CLAIMS) {
+            // During DEPOSIT and COVERAGE phases, require equal amounts
+            if (seniorAmount != juniorAmount) {
+                revert EqualAmountsRequired();
+            }
         }
+        // During SENIOR_CLAIMS (non-emergency) and FINAL_CLAIMS phases, any combination is allowed
+        
+        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
+
+        // Burn the tokens
+        _burnTokens(msg.sender, seniorAmount, juniorAmount);
+
+        // Update vault balances
+        aUSDCBalance -= aUSDCAmount;
+        cUSDTBalance -= cUSDTAmount;
+
+        // Transfer assets back to user
+        if (aUSDCAmount > 0) {
+            if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
+                revert TransferOperationFailed();
+            }
+        }
+        if (cUSDTAmount > 0) {
+            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
+                revert TransferOperationFailed();
+            }
+        }
+
+        emit TokensWithdrawn(msg.sender, seniorAmount, juniorAmount, aUSDCAmount, cUSDTAmount);
     }
 
     /**
-     * @dev Public function to redeem specific amounts of risk tokens
-     * @param seniorAmount Amount of senior tokens to redeem
-     * @param juniorAmount Amount of junior tokens to redeem
+     * @dev Emergency withdrawal for senior token holders (can choose preferred asset)
+     * @param seniorAmount Amount of senior tokens to withdraw
+     * @param preferredAsset Asset to withdraw (aUSDC or cUSDT) - the one that didn't lose value
      */
-    function redeemTokens(uint256 seniorAmount, uint256 juniorAmount) external whenNotPaused nonReentrant {
-        _executeRedemption(seniorAmount, juniorAmount);
+    function emergencyWithdraw(uint256 seniorAmount, address preferredAsset)
+        external
+        nonReentrant
+    {
+        if (!emergencyMode) revert EmergencyModeNotActive();
+        if (seniorAmount == 0) revert NoTokensToWithdraw();
+        if (!_isAssetSupported(preferredAsset)) revert UnsupportedAsset();
+
+        // Only senior tokens can be used in emergency withdrawal
+        uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(msg.sender);
+        if (seniorBalance < seniorAmount) revert InsufficientTokenBalance();
+
+        // Calculate withdrawal amount for preferred asset
+        uint256 withdrawAmount;
+        if (totalTokensIssued > 0) {
+            uint256 totalVaultValue = _getTotalVaultValue();
+            withdrawAmount = (seniorAmount * totalVaultValue) / totalTokensIssued;
+            
+            // Ensure we don't withdraw more than available in preferred asset
+            if (preferredAsset == aUSDC) {
+                withdrawAmount = withdrawAmount > aUSDCBalance ? aUSDCBalance : withdrawAmount;
+            } else {
+                withdrawAmount = withdrawAmount > cUSDTBalance ? cUSDTBalance : withdrawAmount;
+            }
+        }
+
+        if (withdrawAmount == 0) revert NoFundsToWithdraw();
+
+        // Burn only senior tokens
+        _burnTokens(msg.sender, seniorAmount, 0);
+
+        // Update vault balance
+        if (preferredAsset == aUSDC) {
+            aUSDCBalance -= withdrawAmount;
+        } else {
+            cUSDTBalance -= withdrawAmount;
+        }
+
+        // Transfer preferred asset to user
+        if (!IERC20(preferredAsset).transfer(msg.sender, withdrawAmount)) {
+            revert TransferOperationFailed();
+        }
+
+        emit EmergencyWithdrawal(msg.sender, seniorAmount, preferredAsset, withdrawAmount);
     }
 
     /**
-     * @dev Redeems all available insurance tokens for maximum asset recovery
+     * @dev Withdraws all available tokens for maximum asset recovery (FINAL_CLAIMS phase only)
      */
-    function redeemAllTokens() external whenNotPaused nonReentrant {
+    function withdrawAll() external onlyDuringPhase(Phase.FINAL_CLAIMS) whenNotEmergency nonReentrant {
         uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(msg.sender);
         uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(msg.sender);
 
-        if (seniorBalance == 0 && juniorBalance == 0) revert NoTokensToRedeem();
+        if (seniorBalance == 0 && juniorBalance == 0) revert NoTokensToWithdraw();
 
-        // During coverage phase, redeem equal amounts only
-        if (block.timestamp > depositPhaseEnd && block.timestamp <= coveragePhaseEnd) {
-            uint256 minBalance = seniorBalance < juniorBalance ? seniorBalance : juniorBalance;
-            _executeRedemption(minBalance, minBalance);
-        } else {
-            // Outside coverage phase, redeem all available tokens
-            _executeRedemption(seniorBalance, juniorBalance);
+        // Call the internal withdrawal logic directly
+        uint256 totalTokensToWithdraw = seniorBalance + juniorBalance;
+
+        // Calculate proportional withdrawal amounts
+        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(totalTokensToWithdraw);
+        
+        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
+
+        // Burn the tokens
+        _burnTokens(msg.sender, seniorBalance, juniorBalance);
+
+        // Update vault balances
+        aUSDCBalance -= aUSDCAmount;
+        cUSDTBalance -= cUSDTAmount;
+
+        // Transfer assets back to user
+        if (aUSDCAmount > 0) {
+            if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
+                revert TransferOperationFailed();
+            }
         }
+        if (cUSDTAmount > 0) {
+            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
+                revert TransferOperationFailed();
+            }
+        }
+
+        emit TokensWithdrawn(msg.sender, seniorBalance, juniorBalance, aUSDCAmount, cUSDTAmount);
     }
 
-    // View Functions for Frontend Integration
+    // View Functions
     /**
-     * @dev Gets the total number of insurance claims
-     * @return count Total number of claims submitted
-     */
-    function getClaimsCount() external view returns (uint256 count) {
-        return insuranceClaims.length;
-    }
-
-    /**
-     * @dev Gets claim IDs for a specific user
+     * @dev Gets user's token balances
      * @param user The user address
-     * @return claimIds Array of claim IDs belonging to the user
+     * @return seniorBalance Amount of senior tokens held
+     * @return juniorBalance Amount of junior tokens held
      */
-    function getUserClaims(address user) external view returns (uint256[] memory claimIds) {
-        return userClaims[user];
-    }
-
-    /**
-     * @dev Gets detailed information about a claim
-     * @param claimId The claim ID to query
-     * @return claim The complete claim information
-     */
-    function getClaim(uint256 claimId) external view returns (InsuranceClaim memory claim) {
-        if (claimId >= insuranceClaims.length) revert InvalidClaimId();
-        return insuranceClaims[claimId];
-    }
-
-    /**
-     * @dev Gets user's total deposits across all assets
-     * @param user The user address
-     * @return aUSDCDeposits Amount of aUSDC deposited
-     * @return cUSDTDeposits Amount of cUSDT deposited
-     */
-    function getUserDeposits(address user) external view returns (
-        uint256 aUSDCDeposits,
-        uint256 cUSDTDeposits
+    function getUserTokenBalances(address user) external view returns (
+        uint256 seniorBalance,
+        uint256 juniorBalance
     ) {
-        return (userDeposits[user][aUSDC], userDeposits[user][cUSDT]);
+        return (
+            IRiskToken(seniorToken).balanceOf(user),
+            IRiskToken(juniorToken).balanceOf(user)
+        );
     }
 
     /**
-     * @dev Calculates user's insurance coverage
-     * @param user The user address
-     * @return totalCoverage Total insurance coverage amount
+     * @dev Calculates withdrawal amounts for given token amounts
+     * @param seniorAmount Amount of senior tokens
+     * @param juniorAmount Amount of junior tokens
+     * @return aUSDCAmount Amount of aUSDC that would be withdrawn
+     * @return cUSDTAmount Amount of cUSDT that would be withdrawn
      */
-    function getUserInsuranceCoverage(address user) external view returns (uint256 totalCoverage) {
-        uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(user);
-        uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(user);
-        return _calculateInsuranceCoverage(user, seniorBalance, juniorBalance);
+    function calculateWithdrawalAmounts(uint256 seniorAmount, uint256 juniorAmount) 
+        external 
+        view 
+        returns (uint256 aUSDCAmount, uint256 cUSDTAmount) 
+    {
+        uint256 totalTokens = seniorAmount + juniorAmount;
+        return _calculateWithdrawalAmounts(totalTokens);
     }
 
     /**
-     * @dev Gets the current protocol phase
-     * @return phase 0=Deposit, 1=Coverage, 2=SeniorClaim, 3=FinalClaim, 4=Ended
-     */
-    function getCurrentPhase() external view returns (uint8 phase) {
-        if (block.timestamp <= depositPhaseEnd) return 0;
-        if (block.timestamp <= coveragePhaseEnd) return 1;
-        if (block.timestamp <= seniorClaimStart) return 2;
-        if (block.timestamp <= finalClaimDeadline) return 3;
-        return 4;
-    }
-
-    /**
-     * @dev Gets total value locked in the protocol
-     * @return totalValue Combined value of all asset pools
+     * @dev Gets total value locked in the vault
+     * @return totalValue Combined value of all deposited assets
      */
     function getTotalValueLocked() external view returns (uint256 totalValue) {
-        return _getTotalPoolValue();
+        return _getTotalVaultValue();
+    }
+
+    /**
+     * @dev Gets vault balances for both assets
+     * @return aUSDCVaultBalance Amount of aUSDC in vault
+     * @return cUSDTVaultBalance Amount of cUSDT in vault
+     */
+    function getVaultBalances() external view returns (
+        uint256 aUSDCVaultBalance,
+        uint256 cUSDTVaultBalance
+    ) {
+        return (aUSDCBalance, cUSDTBalance);
     }
 
     /**
@@ -568,5 +539,72 @@ contract RiskVault is Ownable, ReentrancyGuard {
      */
     function isAssetSupported(address asset) external view returns (bool supported) {
         return _isAssetSupported(asset);
+    }
+
+    /**
+     * @dev Gets protocol status including current phase
+     * @return emergency Whether emergency mode is active
+     * @return totalTokens Total CM tokens issued
+     * @return phase Current protocol phase (0=DEPOSIT, 1=COVERAGE, 2=SENIOR_CLAIMS, 3=FINAL_CLAIMS)
+     * @return phaseEndTime When current phase ends
+     */
+    function getProtocolStatus() external view returns (
+        bool emergency,
+        uint256 totalTokens,
+        uint8 phase,
+        uint256 phaseEndTime
+    ) {
+        uint256 phaseDuration;
+        if (currentPhase == Phase.DEPOSIT) {
+            phaseDuration = DEPOSIT_PHASE_DURATION;
+        } else if (currentPhase == Phase.COVERAGE) {
+            phaseDuration = COVERAGE_PHASE_DURATION;
+        } else if (currentPhase == Phase.CLAIMS) {
+            phaseDuration = SENIOR_CLAIMS_DURATION;
+        } else {
+            phaseDuration = FINAL_CLAIMS_DURATION;
+        }
+        
+        return (
+            emergencyMode, 
+            totalTokensIssued, 
+            uint8(currentPhase),
+            phaseStartTime + phaseDuration
+        );
+    }
+
+    /**
+     * @dev Gets detailed phase information
+     * @return phase Current phase
+     * @return phaseStart When current phase started
+     * @return cycleStart When current cycle started
+     * @return timeRemaining Seconds remaining in current phase
+     */
+    function getPhaseInfo() external view returns (
+        uint8 phase,
+        uint256 phaseStart,
+        uint256 cycleStart,
+        uint256 timeRemaining
+    ) {
+        uint256 phaseDuration;
+        if (currentPhase == Phase.DEPOSIT) {
+            phaseDuration = DEPOSIT_PHASE_DURATION;
+        } else if (currentPhase == Phase.COVERAGE) {
+            phaseDuration = COVERAGE_PHASE_DURATION;
+        } else if (currentPhase == Phase.CLAIMS) {
+            phaseDuration = SENIOR_CLAIMS_DURATION;
+        } else {
+            phaseDuration = FINAL_CLAIMS_DURATION;
+        }
+        
+        uint256 timeElapsed = block.timestamp - phaseStartTime;
+        uint256 remaining = timeElapsed >= phaseDuration ? 0 : phaseDuration - timeElapsed;
+        
+        return (
+            uint8(currentPhase),
+            phaseStartTime,
+            cycleStartTime,
+            remaining
+        );
     }
 }
