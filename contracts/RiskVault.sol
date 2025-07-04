@@ -3,11 +3,12 @@
 pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./RiskToken.sol";
 import "./IRiskToken.sol";
 
-/// @title CoverMax Protocol
-contract RiskVault is Ownable {
+/// @title RiskVault Protocol
+contract RiskVault is Ownable, ReentrancyGuard {
     /* Protocol Configuration */
     address public immutable seniorToken; // Senior insurance token contract
     address public immutable juniorToken; // Junior insurance token contract
@@ -16,7 +17,7 @@ contract RiskVault is Ownable {
 
     /* Mathematical Constants */
     uint256 private constant PRECISION_FACTOR = 1e27; // High precision calculations
-    uint256 private constant MIN_DEPOSIT_AMOUNT = 2; // Minimum deposit threshold
+    uint256 private constant MIN_DEPOSIT_AMOUNT = 10; // Minimum deposit threshold
 
     /* Protocol Lifecycle Phases */
     uint256 public depositPhaseEnd; // End of deposit phase
@@ -105,9 +106,16 @@ contract RiskVault is Ownable {
         aUSDC = _aUSDC;
         cUSDT = _cUSDT;
         
-        // Deploy insurance tokenization contracts
-        seniorToken = address(new RiskToken("CoverMax Senior Insurance Token", "CM-SENIOR"));
-        juniorToken = address(new RiskToken("CoverMax Junior Insurance Token", "CM-JUNIOR"));
+        // Deploy insurance tokenization contracts and transfer ownership to this vault
+        RiskToken _seniorToken = new RiskToken("CoverVault Senior Insurance Token", "CM-SENIOR");
+        RiskToken _juniorToken = new RiskToken("CoverVault Junior Insurance Token", "CM-JUNIOR");
+        
+        // Transfer ownership to this vault for proper access control
+        _seniorToken.transferOwnership(address(this));
+        _juniorToken.transferOwnership(address(this));
+        
+        seniorToken = address(_seniorToken);
+        juniorToken = address(_juniorToken);
 
         // Initialize protocol lifecycle phases
         depositPhaseEnd = block.timestamp + 2 days;
@@ -188,6 +196,7 @@ contract RiskVault is Ownable {
         address user,
         uint256 redemptionShare
     ) internal view returns (uint256 aUSDCAmount, uint256 cUSDTAmount) {
+        // Calculate proportional redemption - now simple with 18 decimals
         aUSDCAmount = (userDeposits[user][aUSDC] * redemptionShare) / PRECISION_FACTOR;
         cUSDTAmount = (userDeposits[user][cUSDT] * redemptionShare) / PRECISION_FACTOR;
     }
@@ -221,9 +230,8 @@ contract RiskVault is Ownable {
         uint256 tokenTierAmount = totalAmount >> 1; // Gas-optimized division by 2
         IRiskToken(seniorToken).mint(recipient, tokenTierAmount);
         IRiskToken(juniorToken).mint(recipient, tokenTierAmount);
-        unchecked {
-            totalInsuranceTokens += totalAmount; // Safe arithmetic in realistic scenarios
-        }
+        // Remove unsafe arithmetic - let Solidity 0.8+ handle overflow protection
+        totalInsuranceTokens += totalAmount;
     }
 
     /**
@@ -247,9 +255,8 @@ contract RiskVault is Ownable {
             IRiskToken(juniorToken).burn(tokenHolder, juniorAmount);
         }
 
-        unchecked {
-            totalInsuranceTokens -= totalToBurn; // Safe due to validation above
-        }
+        // Remove unsafe arithmetic - let Solidity 0.8+ handle underflow protection
+        totalInsuranceTokens -= totalToBurn;
     }
 
     /**
@@ -293,7 +300,7 @@ contract RiskVault is Ownable {
      * @param asset The yield-bearing asset to deposit (aUSDC or cUSDT)
      * @param depositAmount Amount of asset to deposit for insurance
      */
-    function depositAsset(address asset, uint256 depositAmount) external whenNotPaused {
+    function depositAsset(address asset, uint256 depositAmount) external whenNotPaused nonReentrant {
         if (block.timestamp > finalClaimDeadline) {
             _initializeNewProtocolCycle();
         }
@@ -459,14 +466,14 @@ contract RiskVault is Ownable {
      * @param seniorAmount Amount of senior tokens to redeem
      * @param juniorAmount Amount of junior tokens to redeem
      */
-    function redeemTokens(uint256 seniorAmount, uint256 juniorAmount) external whenNotPaused {
+    function redeemTokens(uint256 seniorAmount, uint256 juniorAmount) external whenNotPaused nonReentrant {
         _executeRedemption(seniorAmount, juniorAmount);
     }
 
     /**
      * @dev Redeems all available insurance tokens for maximum asset recovery
      */
-    function redeemAllTokens() external whenNotPaused {
+    function redeemAllTokens() external whenNotPaused nonReentrant {
         uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(msg.sender);
         uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(msg.sender);
 
@@ -514,11 +521,11 @@ contract RiskVault is Ownable {
      * @dev Gets user's total deposits across all assets
      * @param user The user address
      * @return aUSDCDeposits Amount of aUSDC deposited
-     * @return aUSDTDeposits Amount of aUSDT deposited
+     * @return cUSDTDeposits Amount of cUSDT deposited
      */
     function getUserDeposits(address user) external view returns (
         uint256 aUSDCDeposits,
-        uint256 aUSDTDeposits
+        uint256 cUSDTDeposits
     ) {
         return (userDeposits[user][aUSDC], userDeposits[user][cUSDT]);
     }

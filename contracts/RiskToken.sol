@@ -5,7 +5,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-/// @title Risk-weighted tokenization for CoverMax Protocol
+/// @title Risk-weighted tokenization for CoverVault Protocol
 /// @notice Represents proportional claims on deployed capital with risk stratification
 contract RiskToken is ERC20, Ownable {
     constructor(
@@ -14,7 +14,7 @@ contract RiskToken is ERC20, Ownable {
     ) ERC20(tokenName, tokenSymbol) Ownable(msg.sender) {}
 
     function decimals() public pure override returns (uint8) {
-        return 6; // Aligned with USDC precision for seamless integration
+        return 18; // Standardized precision for cleaner math
     }
 
     /// @notice Issues new risk tokens proportional to capital contribution

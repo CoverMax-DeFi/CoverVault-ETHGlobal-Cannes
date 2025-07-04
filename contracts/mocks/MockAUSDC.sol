@@ -14,7 +14,7 @@ contract MockAUSDC is ERC20, Ownable {
     }
 
     function decimals() public pure override returns (uint8) {
-        return 6; // USDC precision
+        return 18; // Standardized precision for cleaner math
     }
 
     /**

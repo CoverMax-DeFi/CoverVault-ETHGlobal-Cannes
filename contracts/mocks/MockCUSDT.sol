@@ -14,7 +14,7 @@ contract MockCUSDT is ERC20, Ownable {
     }
 
     function decimals() public pure override returns (uint8) {
-        return 8; // cUSDT precision (compound tokens typically use 8 decimals)
+        return 18; // Standardized precision for cleaner math
     }
 
     /**
