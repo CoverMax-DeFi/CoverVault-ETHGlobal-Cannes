@@ -166,6 +166,7 @@ const Web3Context = createContext<Web3ContextType>({
   swapExactTokensForTokens: async () => {},
   getAmountsOut: async () => "0",
   addLiquidity: async () => {},
+  removeLiquidity: async () => {},
   getPairReserves: async () => ({ reserve0: 0n, reserve1: 0n }),
   getTokenBalance: async () => 0n,
 });
@@ -228,12 +229,15 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     if (currentChain) {
       // Clear all chain-specific data to prevent stale data
+      console.log(`🔄 Chain changed to ${currentChain} (${getChainConfig(currentChain)?.chainName})`);
+      console.log(`🧹 Clearing chain-specific state...`);
+      
       setBalances(initialBalances);
       setVaultInfo(initialVaultInfo);
       setSeniorTokenAddress(null);
       setJuniorTokenAddress(null);
       
-      console.log(`Cleared state for chain switch to ${currentChain}`);
+      console.log(`✅ State cleared for chain ${currentChain}`);
     }
   }, [currentChain]);
 
@@ -312,22 +316,22 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         const handleChainChanged = (chainId: string) => {
           const numericChainId = parseInt(chainId, 16);
-          console.log('Network changed externally to:', numericChainId);
+          console.log('🔄 Network changed externally to:', numericChainId);
           
-          // Force a page reload to ensure clean state
-          // This is a common pattern for multi-chain dApps to avoid state pollution
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
+          // Let React state management handle the network change gracefully
+          // instead of forcing a page reload
+          console.log('✅ Letting React handle network change smoothly');
         };
 
         const handleAccountsChanged = (accounts: string[]) => {
           if (accounts.length === 0) {
             // User disconnected wallet - clear state and logout
+            console.log('👤 User disconnected wallet, logging out');
             logout();
           } else {
-            // User switched accounts - reload to clear state
-            window.location.reload();
+            // User switched accounts - let React handle the state change
+            console.log('👤 User switched accounts to:', accounts[0]);
+            console.log('✅ Letting React handle account change smoothly');
           }
         };
 
@@ -421,7 +425,19 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   // Refresh all data
   const refreshData = useCallback(async () => {
-    if (!provider || !signer || !address || !currentChain) return;
+    if (!provider || !signer || !address || !currentChain) {
+      console.log('⏭️ Skipping refresh - missing provider, signer, address, or currentChain');
+      return;
+    }
+    
+    // Check if network is consistent before proceeding
+    const networkChainId = await provider.getNetwork().then(n => Number(n.chainId)).catch(() => null);
+    if (networkChainId && networkChainId !== currentChain) {
+      console.log(`⚠️ Network mismatch detected: provider=${networkChainId}, context=${currentChain}. Skipping refresh.`);
+      return;
+    }
+    
+    console.log(`🔄 Refreshing data for chain ${currentChain} (${getChainConfig(currentChain)?.chainName})`);
     
     try {
       const vaultAddress = getCurrentChainAddress(ContractName.RISK_VAULT);
@@ -430,31 +446,46 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return;
       }
 
+      console.log(`📄 Using vault contract at: ${vaultAddress}`);
       const vaultContract = new Contract(vaultAddress, RISK_VAULT_ABI, provider);
       
-      // Get vault info
-      const [
-        protocolStatus,
-        phaseInfo,
-        vaultBalances,
-        userTokenBalances,
-      ] = await Promise.all([
-        vaultContract.getProtocolStatus(),
-        vaultContract.getPhaseInfo(),
-        vaultContract.getVaultBalances(),
-        vaultContract.getUserTokenBalances(address),
-      ]);
-      
-      setVaultInfo({
-        aUSDCBalance: vaultBalances.aUSDCVaultBalance,
-        cUSDTBalance: vaultBalances.cUSDTVaultBalance,
-        totalTokensIssued: protocolStatus.totalTokens,
-        emergencyMode: protocolStatus.emergency,
-        currentPhase: protocolStatus.phase,
-        phaseStartTime: phaseInfo.phaseStart,
-        cycleStartTime: phaseInfo.cycleStart,
-        timeRemaining: phaseInfo.timeRemaining,
-      });
+      // Get vault info with detailed logging
+      console.log('📊 Fetching vault contract data...');
+      let userTokenBalances: any;
+      try {
+        const [
+          protocolStatus,
+          phaseInfo,
+          vaultBalances,
+          userTokenBalancesResult,
+        ] = await Promise.all([
+          vaultContract.getProtocolStatus(),
+          vaultContract.getPhaseInfo(),
+          vaultContract.getVaultBalances(),
+          vaultContract.getUserTokenBalances(address),
+        ]);
+        
+        userTokenBalances = userTokenBalancesResult;
+        console.log('✅ Vault contract data fetched successfully');
+        
+        setVaultInfo({
+          aUSDCBalance: vaultBalances.aUSDCVaultBalance,
+          cUSDTBalance: vaultBalances.cUSDTVaultBalance,
+          totalTokensIssued: protocolStatus.totalTokens,
+          emergencyMode: protocolStatus.emergency,
+          currentPhase: protocolStatus.phase,
+          phaseStartTime: phaseInfo.phaseStart,
+          cycleStartTime: phaseInfo.cycleStart,
+          timeRemaining: phaseInfo.timeRemaining,
+        });
+      } catch (vaultError) {
+        if (vaultError.code === 'NETWORK_ERROR') {
+          console.log('🔄 Network change detected in vault calls, skipping...');
+          return;
+        }
+        console.error('❌ Vault contract calls failed:', vaultError);
+        throw vaultError;
+      }
       
       // Get user token balances
       const aUSDCAddress = getCurrentChainAddress(ContractName.MOCK_AUSDC);
@@ -466,26 +497,51 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return;
       }
 
+      console.log(`💰 Fetching token balances...`);
+      console.log(`  aUSDC: ${aUSDCAddress}`);
+      console.log(`  cUSDT: ${cUSDTAddress}`);
+      console.log(`  Pair: ${pairAddress}`);
+
       const aUSDCContract = new Contract(aUSDCAddress, ERC20_ABI, provider);
       const cUSDTContract = new Contract(cUSDTAddress, ERC20_ABI, provider);
       const pairContract = new Contract(pairAddress, ERC20_ABI, provider);
       
-      const [aUSDCBalance, cUSDTBalance, lpBalance] = await Promise.all([
-        aUSDCContract.balanceOf(address),
-        cUSDTContract.balanceOf(address),
-        pairContract.balanceOf(address),
-      ]);
-      
-      setBalances({
-        seniorTokens: userTokenBalances.seniorBalance,
-        juniorTokens: userTokenBalances.juniorBalance,
-        aUSDC: aUSDCBalance,
-        cUSDT: cUSDTBalance,
-        lpTokens: lpBalance,
-      });
+      try {
+        const [aUSDCBalance, cUSDTBalance, lpBalance] = await Promise.all([
+          aUSDCContract.balanceOf(address),
+          cUSDTContract.balanceOf(address),
+          pairContract.balanceOf(address),
+        ]);
+        
+        console.log('✅ Token balances fetched successfully');
+        
+        setBalances({
+          seniorTokens: userTokenBalances.seniorBalance,
+          juniorTokens: userTokenBalances.juniorBalance,
+          aUSDC: aUSDCBalance,
+          cUSDT: cUSDTBalance,
+          lpTokens: lpBalance,
+        });
+      } catch (tokenError) {
+        if (tokenError.code === 'NETWORK_ERROR') {
+          console.log('🔄 Network change detected in token calls, skipping...');
+          return;
+        }
+        console.error('❌ Token balance calls failed:', tokenError);
+        throw tokenError;
+      }
     } catch (error) {
-      console.error('Error refreshing data:', error);
-      toast.error('Failed to refresh data');
+      if (error.code === 'NETWORK_ERROR') {
+        console.log('🔄 Network change detected in main refresh, skipping...');
+        return;
+      }
+      console.error('💥 Error refreshing data on chain', currentChain, ':', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        reason: error.reason
+      });
+      toast.error(`Failed to refresh data on ${getChainConfig(currentChain)?.chainName || 'unknown network'}`);
     }
   }, [provider, signer, address, currentChain, getCurrentChainAddress]);
 
@@ -812,14 +868,22 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   // Auto-refresh data periodically
   useEffect(() => {
-    if (!authenticated || !address) return;
+    if (!authenticated || !address || !currentChain) return;
 
-    const interval = setInterval(() => {
-      refreshData();
-    }, 500); // Refresh every .5 second for real-time updates
+    let interval: NodeJS.Timeout;
+    
+    // Add a delay after chain change before starting auto-refresh
+    const timeoutId = setTimeout(() => {
+      interval = setInterval(() => {
+        refreshData();
+      }, 3000); // Refresh every 3 seconds (less aggressive to reduce race conditions)
+    }, 2000); // Wait 2 seconds after chain change to let everything settle
 
-    return () => clearInterval(interval);
-  }, [authenticated, address, refreshData]);
+    return () => {
+      clearTimeout(timeoutId);
+      if (interval) clearInterval(interval);
+    };
+  }, [authenticated, address, currentChain, refreshData]);
 
   // Define all the inline functions that were in contextValue
   const swapExactTokensForTokens = async (amountIn: string, amountOutMin: string, path: string[]) => {
@@ -882,9 +946,16 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const getAmountsOut = async (amountIn: string, path: string[]): Promise<string> => {
-    if (!provider) return "0";
+    if (!provider || !currentChain) return "0";
 
     try {
+      // Check network consistency
+      const networkChainId = await provider.getNetwork().then(n => Number(n.chainId)).catch(() => null);
+      if (networkChainId && networkChainId !== currentChain) {
+        console.log(`⚠️ Network mismatch in getAmountsOut: provider=${networkChainId}, context=${currentChain}`);
+        return "0";
+      }
+
       const routerAddress = getCurrentChainAddress(ContractName.UNISWAP_V2_ROUTER);
       if (!routerAddress) return "0";
 
@@ -893,6 +964,10 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
       const amounts = await router.getAmountsOut(amountInWei, path);
       return ethers.formatEther(amounts[amounts.length - 1]);
     } catch (error) {
+      if (error.code === 'NETWORK_ERROR') {
+        console.log('🔄 Network change detected in getAmountsOut, skipping...');
+        return "0";
+      }
       console.error('Error getting amounts out:', error);
       return "0";
     }
@@ -1025,13 +1100,24 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const getPairReserves = async (pairAddress: string) => {
-    if (!provider) return { reserve0: 0n, reserve1: 0n };
+    if (!provider || !currentChain) return { reserve0: 0n, reserve1: 0n };
 
     try {
+      // Check network consistency
+      const networkChainId = await provider.getNetwork().then(n => Number(n.chainId)).catch(() => null);
+      if (networkChainId && networkChainId !== currentChain) {
+        console.log(`⚠️ Network mismatch in getPairReserves: provider=${networkChainId}, context=${currentChain}`);
+        return { reserve0: 0n, reserve1: 0n };
+      }
+
       const pair = new Contract(pairAddress, UNISWAP_V2_PAIR_ABI, provider);
       const [reserve0, reserve1] = await pair.getReserves();
       return { reserve0, reserve1 };
     } catch (error) {
+      if (error.code === 'NETWORK_ERROR') {
+        console.log('🔄 Network change detected in getPairReserves, skipping...');
+        return { reserve0: 0n, reserve1: 0n };
+      }
       console.error('Error getting pair reserves:', error);
       return { reserve0: 0n, reserve1: 0n };
     }
@@ -1092,6 +1178,11 @@ export const PrivyWeb3Provider: React.FC<{ children: ReactNode }> = ({ children 
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
+        },
+        externalWallets: {
+          coinbaseWallet: {
+            connectionOptions: 'smartWalletOnly',
+          },
         },
         defaultChain: {
           id: CHAIN_CONFIG.chainId,

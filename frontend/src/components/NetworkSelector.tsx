@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { toast } from '@/components/ui/sonner';
 import { CHAIN_CONFIG, CHAIN_CONFIGS, SupportedChainId } from '../config/contracts';
+import { useWeb3 } from '../context/PrivyWeb3Context';
 
 interface Network {
   id: number;
@@ -26,10 +27,25 @@ const SUPPORTED_NETWORKS: Network[] = Object.values(CHAIN_CONFIGS).map(config =>
 export const NetworkSelector: React.FC = () => {
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
+  const { currentChain, chainId } = useWeb3();
   const [isOpen, setIsOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
 
-  const currentNetwork = SUPPORTED_NETWORKS.find(network => network.id === CHAIN_CONFIG.chainId);
+  // Use the actual current chain from Web3Context, not the static config
+  const currentNetwork = SUPPORTED_NETWORKS.find(network => 
+    network.id === (currentChain || chainId || CHAIN_CONFIG.chainId)
+  );
+
+  // Debug logging to track network detection (can be removed once stable)
+  // React.useEffect(() => {
+  //   console.log('🔍 NetworkSelector state:', {
+  //     currentChain,
+  //     chainId,
+  //     fallback: CHAIN_CONFIG.chainId,
+  //     selectedId: currentChain || chainId || CHAIN_CONFIG.chainId,
+  //     currentNetwork: currentNetwork?.name
+  //   });
+  // }, [currentChain, chainId, currentNetwork]);
 
   const switchNetwork = async (network: Network) => {
     if (!ready || !authenticated || !wallets.length) {
@@ -139,8 +155,11 @@ export const NetworkSelector: React.FC = () => {
       >
         <span className="text-lg">{currentNetwork?.icon || '🔗'}</span>
         <span className="text-sm font-medium text-white">
-          {currentNetwork?.name || 'Unknown Network'}
+          {currentNetwork?.name || `Chain ${currentChain || chainId || 'Unknown'}`}
         </span>
+        {currentChain && (
+          <span className="text-xs text-gray-400">({currentChain})</span>
+        )}
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"

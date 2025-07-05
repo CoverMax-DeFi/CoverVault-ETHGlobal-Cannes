@@ -35,14 +35,26 @@ export const MULTI_CHAIN_ADDRESSES: Record<SupportedChainId, Partial<Record<Cont
     [ContractName.SENIOR_JUNIOR_PAIR]: "0x0b14441E9A6AF54632f42d0fb9227ce13850A282",
   },
   [SupportedChainId.HEDERA_TESTNET]: {
-    // Contracts will be deployed here
-    // [ContractName.RISK_VAULT]: "0x...",
-    // Add more contracts as they are deployed
+    [ContractName.RISK_VAULT]: "0x3BE24eC5d3600dFd8abd854CC5Db8e07B4dd3E8c",
+    [ContractName.SENIOR_TOKEN]: "0x6b50A09a7F3be0F39ba376a838CC8Acc3558b55a",
+    [ContractName.JUNIOR_TOKEN]: "0x4180bfA6A7c9A616466a63E5cC92BfBc92f551C4",
+    [ContractName.MOCK_AUSDC]: "0x8C1ce7Ba1F0D090630f42142483C0C12CA1f9DAA",
+    [ContractName.MOCK_CUSDT]: "0x6168E7cee0BEbbC084b903B557575E75D23c25bf",
+    [ContractName.UNISWAP_V2_FACTORY]: "0x068eB40356CB922dF8BB19EaFeaf6CDBd9904F6E",
+    [ContractName.UNISWAP_V2_ROUTER]: "0x3ac1398Ab4cED81b342531C4CCd32D846395E224",
+    [ContractName.WETH]: "0x1Ee39839C03FfFE8fFeED79999Fd8d7F9F633883",
+    [ContractName.SENIOR_JUNIOR_PAIR]: "0x0ae391c3Db1fabFED097685970B11DE0d82fd113",
   },
   [SupportedChainId.MANTLE_TESTNET]: {
-    // Contracts will be deployed here
-    // [ContractName.RISK_VAULT]: "0x...",
-    // Add more contracts as they are deployed
+    [ContractName.RISK_VAULT]: "0x88a6B75bf7376De9FF3E602f8FF0C160b89D8a3A",
+    [ContractName.SENIOR_TOKEN]: "0xdEAaCcF040370F1f715aa7537B48a4fC47A385d5",
+    [ContractName.JUNIOR_TOKEN]: "0xeD9611881f89fE55Dd313CC1B1d167A72BE322E0",
+    [ContractName.MOCK_AUSDC]: "0x457211dc1bD59ca836A45b31f4a597299f691505",
+    [ContractName.MOCK_CUSDT]: "0x23CEA05f8351E3BaC5b53A84f0e3a05916c63E5F",
+    [ContractName.UNISWAP_V2_FACTORY]: "0xd1bf5886C34DF2FFD87ecd95fd21fbAe6730A177",
+    [ContractName.UNISWAP_V2_ROUTER]: "0x012c9515Eb3d86C5A1b13195AfaC785919C4CF5b",
+    [ContractName.WETH]: "0x6867ac2479216A57A6bf5B14d2F8Cd292bA47656",
+    [ContractName.SENIOR_JUNIOR_PAIR]: "0xE3E3379c78A8C34fb7E7618dcb285c57D2859dD7",
   },
 };
 
