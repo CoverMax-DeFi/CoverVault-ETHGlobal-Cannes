@@ -57,6 +57,12 @@ const Dashboard = () => {
   const [rebalanceTo, setRebalanceTo] = useState<'senior' | 'junior'>('junior');
   const [rebalanceAmount, setRebalanceAmount] = useState('');
   const [rebalanceEstimate, setRebalanceEstimate] = useState('0');
+  
+  // New redemption state
+  const [selectedWithdrawAsset, setSelectedWithdrawAsset] = useState<'aUSDC' | 'cUSDT' | null>(null);
+  const [withdrawAssetAmount, setWithdrawAssetAmount] = useState('');
+  const [calculatedTokenAmounts, setCalculatedTokenAmounts] = useState({ senior: '0', junior: '0' });
+  const [effectivePhase, setEffectivePhase] = useState<Phase>(Phase.DEPOSIT);
 
   // Format token amounts for display
   const formatTokenAmount = (amount: bigint) => {
@@ -202,6 +208,57 @@ const Dashboard = () => {
     updateEstimates();
   }, [withdrawSeniorAmount, withdrawJuniorAmount, calculateWithdrawalAmounts]);
 
+  // Calculate optimal token amounts when user selects asset and amount
+  useEffect(() => {
+    const calculateOptimalTokens = () => {
+      if (!selectedWithdrawAsset || !withdrawAssetAmount || parseFloat(withdrawAssetAmount) <= 0) {
+        setCalculatedTokenAmounts({ senior: '0', junior: '0' });
+        return;
+      }
+
+      const targetAmount = parseFloat(withdrawAssetAmount);
+      const seniorBalance = parseFloat(formatTokenAmount(balances.seniorTokens));
+      const juniorBalance = parseFloat(formatTokenAmount(balances.juniorTokens));
+
+      let seniorToUse = 0;
+      let juniorToUse = 0;
+
+      // Handle case where phase is not loaded yet - default to DEPOSIT phase logic
+      // Convert bigint to number for comparison
+      const currentPhase = vaultInfo.currentPhase !== undefined ? Number(vaultInfo.currentPhase) : Phase.DEPOSIT;
+      setEffectivePhase(currentPhase);
+
+      if (currentPhase === Phase.DEPOSIT) {
+        // Deposit phase: equal amounts required  
+        const requiredPerToken = targetAmount / 2; // Each token contributes half
+        const maxPossible = Math.min(seniorBalance, juniorBalance);
+        const actualPerToken = Math.min(requiredPerToken, maxPossible);
+        seniorToUse = actualPerToken;
+        juniorToUse = actualPerToken;
+      } else if (currentPhase === Phase.CLAIMS) {
+        // Claims phase: senior tokens only
+        seniorToUse = Math.min(targetAmount, seniorBalance);
+        juniorToUse = 0;
+      } else {
+        // Other phases: prefer junior tokens first
+        if (juniorBalance >= targetAmount) {
+          juniorToUse = targetAmount;
+          seniorToUse = 0;
+        } else {
+          juniorToUse = juniorBalance;
+          seniorToUse = Math.min(targetAmount - juniorBalance, seniorBalance);
+        }
+      }
+
+      setCalculatedTokenAmounts({
+        senior: seniorToUse.toFixed(6),
+        junior: juniorToUse.toFixed(6),
+      });
+    };
+
+    calculateOptimalTokens();
+  }, [selectedWithdrawAsset, withdrawAssetAmount, balances.seniorTokens, balances.juniorTokens, vaultInfo.currentPhase]);
+
   const handleDeposit = async () => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) return;
     await depositAsset(depositAssetType, depositAmount);
@@ -215,6 +272,18 @@ const Dashboard = () => {
     await withdraw(senior, junior);
     setWithdrawSeniorAmount('');
     setWithdrawJuniorAmount('');
+  };
+
+  const handleOptimalWithdraw = async () => {
+    if (!selectedWithdrawAsset || !withdrawAssetAmount || parseFloat(withdrawAssetAmount) <= 0) return;
+    
+    const { senior, junior } = calculatedTokenAmounts;
+    if (parseFloat(senior) <= 0 && parseFloat(junior) <= 0) return;
+    
+    await withdraw(senior, junior, selectedWithdrawAsset);
+    setSelectedWithdrawAsset(null);
+    setWithdrawAssetAmount('');
+    setCalculatedTokenAmounts({ senior: '0', junior: '0' });
   };
 
   const handleEmergencyWithdraw = async () => {
@@ -477,56 +546,90 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="text-white">Redeem For Assets</CardTitle>
               <CardDescription className="text-slate-300">
-                Convert your risk tokens back to aUSDC or cUSDT
+                Choose which asset to withdraw and how much
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Asset Selection */}
               <div>
-                <Label htmlFor="senior-amount" className="text-slate-300">CV-SENIOR Amount</Label>
-                <Input
-                  id="senior-amount"
-                  type="number"
-                  placeholder="0.0"
-                  value={withdrawSeniorAmount}
-                  onChange={(e) => setWithdrawSeniorAmount(e.target.value)}
-                  disabled={!isConnected}
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                />
-                <p className="text-sm text-slate-400 mt-1">
-                  Balance: {formatTokenAmount(balances.seniorTokens)}
-                </p>
+                <Label className="text-slate-300 mb-3 block">Select Asset to Withdraw</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSelectedWithdrawAsset('aUSDC')}
+                    className={`p-3 rounded-lg border transition-all ${
+                      selectedWithdrawAsset === 'aUSDC'
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                        : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="font-semibold">aUSDC</div>
+                      <div className="text-sm opacity-80">Aave USDC</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedWithdrawAsset('cUSDT')}
+                    className={`p-3 rounded-lg border transition-all ${
+                      selectedWithdrawAsset === 'cUSDT'
+                        ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                        : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="font-semibold">cUSDT</div>
+                      <div className="text-sm opacity-80">Compound USDT</div>
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {vaultInfo.currentPhase !== Phase.CLAIMS && (
+              {/* Amount Input */}
+              {selectedWithdrawAsset && (
                 <div>
-                  <Label htmlFor="junior-amount" className="text-slate-300">CV-JUNIOR Amount</Label>
+                  <Label htmlFor="withdraw-amount" className="text-slate-300">
+                    Amount to Withdraw ({selectedWithdrawAsset})
+                  </Label>
                   <Input
-                    id="junior-amount"
+                    id="withdraw-amount"
                     type="number"
                     placeholder="0.0"
-                    value={withdrawJuniorAmount}
-                    onChange={(e) => setWithdrawJuniorAmount(e.target.value)}
+                    value={withdrawAssetAmount}
+                    onChange={(e) => setWithdrawAssetAmount(e.target.value)}
                     disabled={!isConnected}
                     className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
                   />
                   <p className="text-sm text-slate-400 mt-1">
-                    Balance: {formatTokenAmount(balances.juniorTokens)}
+                    Available: {selectedWithdrawAsset === 'aUSDC' ? formatTokenAmount(balances.aUSDC) : formatTokenAmount(balances.cUSDT)}
                   </p>
                 </div>
               )}
 
-              {(withdrawSeniorAmount || withdrawJuniorAmount) && (
+              {/* Automatic Token Allocation Display */}
+              {selectedWithdrawAsset && withdrawAssetAmount && parseFloat(withdrawAssetAmount) > 0 && (
                 <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Estimated withdrawal: {estimatedWithdrawal.aUSDC} aUSDC + {estimatedWithdrawal.cUSDT} cUSDT
+                    <div className="space-y-2">
+                      <div className="font-semibold">Automatic Token Allocation:</div>
+                      <div className="text-sm space-y-1">
+                        <div>Senior Tokens: {calculatedTokenAmounts.senior}</div>
+                        <div>Junior Tokens: {calculatedTokenAmounts.junior}</div>
+                        <div className="text-xs text-slate-400 mt-2">
+                          {effectivePhase === Phase.DEPOSIT
+                            ? 'Deposit phase: Using equal amounts of senior and junior tokens'
+                            : effectivePhase === Phase.CLAIMS
+                            ? 'Claims phase: Using senior tokens only'
+                            : 'Using max junior tokens first, then senior tokens'}
+                        </div>
+                      </div>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
 
               <Button 
-                onClick={handleWithdraw} 
-                disabled={!isConnected || (!withdrawSeniorAmount && !withdrawJuniorAmount)}
+                onClick={handleOptimalWithdraw} 
+                disabled={!isConnected || !selectedWithdrawAsset || !withdrawAssetAmount || parseFloat(withdrawAssetAmount) <= 0}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
                 Redeem Tokens

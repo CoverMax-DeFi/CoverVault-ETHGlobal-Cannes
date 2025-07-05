@@ -387,7 +387,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   // Withdraw tokens
-  const withdraw = async (seniorAmount: string, juniorAmount: string) => {
+  const withdraw = async (seniorAmount: string, juniorAmount: string, preferredAsset?: string) => {
     if (!signer) {
       toast.error('Please connect your wallet');
       return;
@@ -395,9 +395,19 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     try {
       const vaultContract = new Contract(CONTRACT_ADDRESSES.RiskVault, RISK_VAULT_ABI, signer);
+      
+      // Get the preferred asset address
+      let preferredAssetAddress = ethers.ZeroAddress; // Default to proportional
+      if (preferredAsset === 'aUSDC') {
+        preferredAssetAddress = CONTRACT_ADDRESSES.aUSDC;
+      } else if (preferredAsset === 'cUSDT') {
+        preferredAssetAddress = CONTRACT_ADDRESSES.cUSDT;
+      }
+      
       const tx = await vaultContract.withdraw(
         ethers.parseEther(seniorAmount),
-        ethers.parseEther(juniorAmount)
+        ethers.parseEther(juniorAmount),
+        preferredAssetAddress
       );
       toast.info('Processing withdrawal...');
       await tx.wait();
