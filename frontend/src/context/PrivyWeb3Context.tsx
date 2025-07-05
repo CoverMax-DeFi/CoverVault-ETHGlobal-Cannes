@@ -16,6 +16,7 @@ interface TokenBalances {
   juniorTokens: bigint;
   aUSDC: bigint;
   cUSDT: bigint;
+  lpTokens: bigint;
 }
 
 interface VaultInfo {
@@ -89,6 +90,12 @@ interface Web3ContextType {
     tokenB: string,
   ) => Promise<void>;
 
+  removeLiquidity: (
+    lpTokenAmount: string,
+    tokenA: string,
+    tokenB: string,
+  ) => Promise<void>;
+
   getPairReserves: (
     pairAddress: string
   ) => Promise<{ reserve0: bigint; reserve1: bigint }>;
@@ -105,6 +112,7 @@ const Web3Context = createContext<Web3ContextType>({
     juniorTokens: 0n,
     aUSDC: 0n,
     cUSDT: 0n,
+    lpTokens: 0n,
   },
   vaultInfo: {
     aUSDCBalance: 0n,
@@ -152,6 +160,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
     juniorTokens: 0n,
     aUSDC: 0n,
     cUSDT: 0n,
+    lpTokens: 0n,
   });
   
   const [vaultInfo, setVaultInfo] = useState<VaultInfo>({
@@ -258,6 +267,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
         juniorTokens: 0n,
         aUSDC: 0n,
         cUSDT: 0n,
+        lpTokens: 0n,
       });
       toast.info('Wallet disconnected');
     } catch (error) {
@@ -299,10 +309,12 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
       // Get user token balances
       const aUSDCContract = new Contract(CONTRACT_ADDRESSES.MockAUSDC, ERC20_ABI, provider);
       const cUSDTContract = new Contract(CONTRACT_ADDRESSES.MockCUSDT, ERC20_ABI, provider);
+      const pairContract = new Contract(CONTRACT_ADDRESSES.SeniorJuniorPair, ERC20_ABI, provider);
       
-      const [aUSDCBalance, cUSDTBalance] = await Promise.all([
+      const [aUSDCBalance, cUSDTBalance, lpBalance] = await Promise.all([
         aUSDCContract.balanceOf(address),
         cUSDTContract.balanceOf(address),
+        pairContract.balanceOf(address),
       ]);
       
       setBalances({
@@ -310,6 +322,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
         juniorTokens: userTokenBalances.juniorBalance,
         aUSDC: aUSDCBalance,
         cUSDT: cUSDTBalance,
+        lpTokens: lpBalance,
       });
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -567,7 +580,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const interval = setInterval(() => {
       refreshData();
-    }, 15000); // Refresh every 15 seconds
+    }, 500); // Refresh every .5 second for real-time updates
 
     return () => clearInterval(interval);
   }, [authenticated, address, refreshData]);
@@ -704,6 +717,49 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
       } catch (error: any) {
         console.error('Failed to add liquidity:', error);
         toast.error(error.reason || 'Failed to add liquidity');
+      }
+    },
+
+    removeLiquidity: async (lpTokenAmount: string, tokenA: string, tokenB: string) => {
+      if (!signer || !address) {
+        toast.error('Please connect your wallet');
+        return;
+      }
+
+      try {
+        const lpAmountWei = ethers.parseEther(lpTokenAmount);
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+
+        // Approve LP tokens
+        const pairContract = new Contract(CONTRACT_ADDRESSES.SeniorJuniorPair, ERC20_ABI, signer);
+        const allowance = await pairContract.allowance(address, CONTRACT_ADDRESSES.UniswapV2Router02);
+
+        if (allowance < lpAmountWei) {
+          const approveTx = await pairContract.approve(CONTRACT_ADDRESSES.UniswapV2Router02, lpAmountWei);
+          toast.info('Approving LP tokens...');
+          await approveTx.wait();
+        }
+
+        // Remove liquidity
+        const router = new Contract(CONTRACT_ADDRESSES.UniswapV2Router02, UNISWAP_V2_ROUTER_ABI, signer);
+        const tx = await router.removeLiquidity(
+          tokenA,
+          tokenB,
+          lpAmountWei,
+          0, // amountAMin (accept any amount)
+          0, // amountBMin (accept any amount)
+          address,
+          deadline,
+        );
+
+        toast.info('Removing liquidity...');
+        await tx.wait();
+        toast.success('Liquidity removed');
+        
+        await refreshData();
+      } catch (error: any) {
+        console.error('Failed to remove liquidity:', error);
+        toast.error(error.reason || 'Failed to remove liquidity');
       }
     },
   

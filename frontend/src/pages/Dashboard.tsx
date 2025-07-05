@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Navbar from '@/components/Navbar';
 import PhaseDisplay from '@/components/PhaseDisplay';
-import TokenBalance from '@/components/TokenBalance';
 import QuickTrade from '@/components/QuickTrade';
 import StatCard from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,22 +10,26 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Info, DollarSign, Coins, Shield, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, ArrowUpDown, TrendingUp, Minus } from 'lucide-react';
 import { Phase } from '@/config/contracts';
 import { ethers } from 'ethers';
 
 const Dashboard = () => {
   const {
     isConnected,
-    address,
     balances,
     vaultInfo,
     depositAsset,
     withdraw,
-    withdrawSeniorTokens,
-    withdrawAll,
     emergencyWithdraw,
     calculateWithdrawalAmounts,
+    getAmountsOut,
+    seniorTokenAddress,
+    juniorTokenAddress,
+    addLiquidity,
+    removeLiquidity,
+    swapExactTokensForTokens,
   } = useWeb3();
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -36,11 +39,97 @@ const Dashboard = () => {
   const [emergencyAmount, setEmergencyAmount] = useState('');
   const [preferredAsset, setPreferredAsset] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
   const [estimatedWithdrawal, setEstimatedWithdrawal] = useState({ aUSDC: '0', cUSDT: '0' });
+  const [seniorPrice, setSeniorPrice] = useState('0.98');
+  const [juniorPrice, setJuniorPrice] = useState('1.05');
+  const [pricesLoading, setPricesLoading] = useState(false);
+  
+  // Liquidity management state
+  const [liquiditySeniorAmount, setLiquiditySeniorAmount] = useState('');
+  const [liquidityJuniorAmount, setLiquidityJuniorAmount] = useState('');
+  const [removeLiquidityAmount, setRemoveLiquidityAmount] = useState('');
+  
+  // Rebalance Risk state
+  const [rebalanceFrom, setRebalanceFrom] = useState<'senior' | 'junior'>('senior');
+  const [rebalanceTo, setRebalanceTo] = useState<'senior' | 'junior'>('junior');
+  const [rebalanceAmount, setRebalanceAmount] = useState('');
+  const [rebalanceEstimate, setRebalanceEstimate] = useState('0');
 
   // Format token amounts for display
   const formatTokenAmount = (amount: bigint) => {
     return ethers.formatEther(amount);
   };
+
+  // Update rebalance estimate in real-time
+  useEffect(() => {
+    const updateRebalanceEstimate = async () => {
+      if (!rebalanceAmount || parseFloat(rebalanceAmount) <= 0) {
+        setRebalanceEstimate('0');
+        return;
+      }
+
+      try {
+        const fromToken = rebalanceFrom === 'senior' ? seniorTokenAddress : juniorTokenAddress;
+        const toToken = rebalanceTo === 'senior' ? seniorTokenAddress : juniorTokenAddress;
+        
+        if (fromToken && toToken && fromToken !== toToken) {
+          const path = [fromToken, toToken];
+          const estimate = await getAmountsOut(rebalanceAmount, path);
+          setRebalanceEstimate(estimate);
+        }
+      } catch (error) {
+        console.error('Error getting rebalance estimate:', error);
+        setRebalanceEstimate('0');
+      }
+    };
+
+    if (rebalanceAmount && parseFloat(rebalanceAmount) > 0) {
+      updateRebalanceEstimate();
+      // Update estimate every 3 seconds for real-time pricing
+      const interval = setInterval(updateRebalanceEstimate, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [rebalanceAmount, rebalanceFrom, rebalanceTo, seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
+
+  // Fetch token prices from Uniswap pair
+  useEffect(() => {
+    const fetchTokenPrices = async () => {
+      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut) return;
+      
+      setPricesLoading(true);
+      try {
+        // Get exchange rates between SENIOR and JUNIOR tokens
+        const seniorToJunior = await getAmountsOut('1', [seniorTokenAddress, juniorTokenAddress]);
+        
+        // Both tokens combined are always redeemable for $2 worth of stablecoins
+        // The price depends on the pool ratio: price = pool_ratio * $1
+        // If 1 SENIOR = 0.8 JUNIOR, then SENIOR = $0.80 and JUNIOR = $1.25 (total still $2.05 ≈ $2)
+        
+        const seniorToJuniorRate = parseFloat(seniorToJunior);
+        // juniorToSeniorRate not used in current pricing calculation
+        
+        // Calculate prices based on pool ratios
+        // The sum should approximately equal $2 (since both are redeemable 1:1 with stablecoins)
+        const totalRatio = seniorToJuniorRate + 1; // 1 SENIOR + equivalent JUNIOR
+        const seniorPriceNum = (2 / totalRatio);
+        const juniorPriceNum = (2 / totalRatio) * seniorToJuniorRate;
+        
+        setSeniorPrice(seniorPriceNum.toFixed(2));
+        setJuniorPrice(juniorPriceNum.toFixed(2));
+      } catch (error) {
+        console.error('Error fetching token prices:', error);
+        // Keep default prices on error (equal weighting)
+        setSeniorPrice('1.00');
+        setJuniorPrice('1.00');
+      } finally {
+        setPricesLoading(false);
+      }
+    };
+
+    fetchTokenPrices();
+    const interval = setInterval(fetchTokenPrices, 5000); // Update every 5 seconds for real-time updates
+    
+    return () => clearInterval(interval);
+  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
 
   // Update withdrawal estimates
   useEffect(() => {
@@ -84,12 +173,61 @@ const Dashboard = () => {
     setEmergencyAmount('');
   };
 
-  // Calculate total portfolio value
+  const handleAddLiquidity = async () => {
+    if (!liquiditySeniorAmount || !liquidityJuniorAmount || !seniorTokenAddress || !juniorTokenAddress) return;
+    if (parseFloat(liquiditySeniorAmount) <= 0 || parseFloat(liquidityJuniorAmount) <= 0) return;
+    
+    await addLiquidity(liquiditySeniorAmount, liquidityJuniorAmount, seniorTokenAddress, juniorTokenAddress);
+    setLiquiditySeniorAmount('');
+    setLiquidityJuniorAmount('');
+  };
+
+  const handleRemoveLiquidity = async () => {
+    if (!removeLiquidityAmount || !seniorTokenAddress || !juniorTokenAddress) return;
+    if (parseFloat(removeLiquidityAmount) <= 0) return;
+    
+    await removeLiquidity(removeLiquidityAmount, seniorTokenAddress, juniorTokenAddress);
+    setRemoveLiquidityAmount('');
+  };
+
+  const handleRebalanceRisk = async () => {
+    if (!rebalanceAmount || parseFloat(rebalanceAmount) <= 0) return;
+    
+    try {
+      const fromToken = rebalanceFrom === 'senior' ? seniorTokenAddress : juniorTokenAddress;
+      const toToken = rebalanceTo === 'senior' ? seniorTokenAddress : juniorTokenAddress;
+      const minOutput = (parseFloat(rebalanceEstimate) * 0.95).toString(); // 5% slippage
+      
+      if (fromToken && toToken && fromToken !== toToken) {
+        await swapExactTokensForTokens(
+          rebalanceAmount,
+          minOutput,
+          [fromToken, toToken]
+        );
+        setRebalanceAmount('');
+        setRebalanceEstimate('0');
+      }
+    } catch (error) {
+      console.error('Rebalance failed:', error);
+    }
+  };
+
+  // Get available balance for rebalancing
+  const getRebalanceBalance = () => {
+    if (rebalanceFrom === 'senior') {
+      return parseFloat(formatTokenAmount(balances.seniorTokens));
+    } else {
+      return parseFloat(formatTokenAmount(balances.juniorTokens));
+    }
+  };
+
+  // Calculate total portfolio value based on risk token holdings and current market prices
+  const seniorTokenAmount = parseFloat(formatTokenAmount(balances.seniorTokens));
+  const juniorTokenAmount = parseFloat(formatTokenAmount(balances.juniorTokens));
+  
   const totalPortfolioValue = 
-    parseFloat(formatTokenAmount(balances.aUSDC)) +
-    parseFloat(formatTokenAmount(balances.cUSDT)) +
-    parseFloat(formatTokenAmount(balances.seniorTokens)) +
-    parseFloat(formatTokenAmount(balances.juniorTokens));
+    (seniorTokenAmount * parseFloat(seniorPrice)) +
+    (juniorTokenAmount * parseFloat(juniorPrice));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -104,10 +242,20 @@ const Dashboard = () => {
 
       <div className="relative z-10 container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">CoverVault Dashboard</h1>
-          <p className="text-slate-300">
-            Trade and manage your risk tokens
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Risk Trading Hub
+              </h1>
+              <p className="text-slate-300">
+                Trade risk tokens with intent-based actions
+              </p>
+            </div>
+            <div className="flex items-center text-slate-400 text-sm">
+              <RefreshCw className={`w-4 h-4 mr-2 ${pricesLoading ? 'animate-spin' : ''}`} />
+              Real-time data
+            </div>
+          </div>
         </div>
 
         {/* Connection Status */}
@@ -125,40 +273,42 @@ const Dashboard = () => {
           <PhaseDisplay />
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Portfolio Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
-            title="Total Portfolio"
+            title="Portfolio Value"
             value={`$${totalPortfolioValue.toFixed(2)}`}
             icon={<DollarSign className="h-5 w-5" />}
+            description={`${seniorTokenAmount.toFixed(2)} SENIOR + ${juniorTokenAmount.toFixed(2)} JUNIOR`}
+            className="transition-all duration-300"
           />
           <StatCard
-            title="CM-SENIOR Tokens"
-            value={formatTokenAmount(balances.seniorTokens)}
+            title="SENIOR Price"
+            value={`$${seniorPrice}`}
             icon={<Shield className="h-5 w-5" />}
-            description="Priority claims"
+            description="Priority claims token"
+            className="transition-all duration-300"
           />
           <StatCard
-            title="CM-JUNIOR Tokens"
-            value={formatTokenAmount(balances.juniorTokens)}
+            title="JUNIOR Price"
+            value={`$${juniorPrice}`}
             icon={<Coins className="h-5 w-5" />}
-            description="Higher yield potential"
-          />
-          <StatCard
-            title="Vault TVL"
-            value={`$${((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(2)}`}
-            icon={<DollarSign className="h-5 w-5" />}
-            description="Total Value Locked"
+            description="Higher yield token"
+            className="transition-all duration-300"
           />
         </div>
 
-        {/* Quick Trade Widget */}
+        {/* Quick Trade - Hero Section */}
         <div className="mb-8">
           <QuickTrade />
         </div>
 
-        {/* Main Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Secondary Actions */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-white">Protocol Actions</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Issue Risk Tokens */}
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
@@ -168,7 +318,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {vaultInfo.currentPhase !== Phase.DEPOSIT ? (
+              {Number(vaultInfo.currentPhase) !== Phase.DEPOSIT ? (
                 <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -210,7 +360,7 @@ const Dashboard = () => {
                   </Alert>
                   <Button 
                     onClick={handleDeposit} 
-                    disabled={!isConnected || !depositAmount || vaultInfo.currentPhase !== Phase.DEPOSIT}
+                    disabled={!isConnected || !depositAmount || parseFloat(depositAmount) <= 0 || Number(vaultInfo.currentPhase) !== Phase.DEPOSIT}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
                     Deposit {depositAssetType}
@@ -287,53 +437,304 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="text-white">Add Liquidity</CardTitle>
               <CardDescription className="text-slate-300">
-                Provide liquidity to earn trading fees
+                Provide liquidity to the SENIOR/JUNIOR pool to earn trading fees
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Coming soon in full release
-                </AlertDescription>
-              </Alert>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-slate-300">SENIOR Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.0"
+                    value={liquiditySeniorAmount}
+                    onChange={(e) => setLiquiditySeniorAmount(e.target.value)}
+                    disabled={!isConnected}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
+                  />
+                  <p className="text-sm text-slate-400 mt-1">
+                    Balance: {formatTokenAmount(balances.seniorTokens)}
+                  </p>
+                </div>
+                
+                <div>
+                  <Label className="text-slate-300">JUNIOR Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.0"
+                    value={liquidityJuniorAmount}
+                    onChange={(e) => setLiquidityJuniorAmount(e.target.value)}
+                    disabled={!isConnected}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
+                  />
+                  <p className="text-sm text-slate-400 mt-1">
+                    Balance: {formatTokenAmount(balances.juniorTokens)}
+                  </p>
+                </div>
+              </div>
+
+              {liquiditySeniorAmount && liquidityJuniorAmount && (
+                <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    You'll receive LP tokens proportional to your share of the pool
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={handleAddLiquidity}
+                disabled={!isConnected || !liquiditySeniorAmount || !liquidityJuniorAmount || parseFloat(liquiditySeniorAmount) <= 0 || parseFloat(liquidityJuniorAmount) <= 0}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                Add Liquidity
+              </Button>
             </CardContent>
           </Card>
+          </div>
         </div>
 
-        {/* Holdings */}
+        {/* Advanced Trading Features */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-white">Advanced Trading</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Rebalance Risk */}
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <ArrowUpDown className="w-5 h-5 mr-2" />
+                  Rebalance Risk
+                </CardTitle>
+                <CardDescription className="text-slate-300">
+                  Swap between SENIOR and JUNIOR tokens
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">From</Label>
+                    <Select value={rebalanceFrom} onValueChange={(value) => setRebalanceFrom(value as 'senior' | 'junior')}>
+                      <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="senior">
+                          <div className="flex items-center">
+                            <Shield className="w-4 h-4 mr-2" />
+                            SENIOR
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="junior">
+                          <div className="flex items-center">
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            JUNIOR
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">To</Label>
+                    <Select value={rebalanceTo} onValueChange={(value) => setRebalanceTo(value as 'senior' | 'junior')}>
+                      <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="senior">
+                          <div className="flex items-center">
+                            <Shield className="w-4 h-4 mr-2" />
+                            SENIOR
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="junior">
+                          <div className="flex items-center">
+                            <TrendingUp className="w-4 h-4 mr-2" />
+                            JUNIOR
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={rebalanceAmount}
+                    onChange={(e) => setRebalanceAmount(e.target.value)}
+                    className="bg-slate-700/50 border-slate-600 text-white"
+                  />
+                  <p className="text-sm text-slate-400">
+                    Available: {getRebalanceBalance().toFixed(4)} {rebalanceFrom.toUpperCase()} tokens
+                  </p>
+                </div>
+
+                {rebalanceAmount && parseFloat(rebalanceAmount) > 0 && rebalanceFrom !== rebalanceTo && (
+                  <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      You'll receive: ~{parseFloat(rebalanceEstimate).toFixed(4)} {rebalanceTo.toUpperCase()} tokens
+                      <br />
+                      <span className="text-xs text-slate-400">
+                        Exchange rate: 1 {rebalanceFrom.toUpperCase()} = {rebalanceAmount ? (parseFloat(rebalanceEstimate) / parseFloat(rebalanceAmount)).toFixed(4) : '0'} {rebalanceTo.toUpperCase()}
+                      </span>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={handleRebalanceRisk}
+                  disabled={!isConnected || !rebalanceAmount || parseFloat(rebalanceAmount) <= 0 || rebalanceFrom === rebalanceTo}
+                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+                >
+                  Rebalance Risk
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Remove Liquidity */}
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Minus className="w-5 h-5 mr-2" />
+                  Remove Liquidity
+                </CardTitle>
+                <CardDescription className="text-slate-300">
+                  Remove liquidity from the SENIOR/JUNIOR pool
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">LP Token Amount</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.0"
+                    value={removeLiquidityAmount}
+                    onChange={(e) => setRemoveLiquidityAmount(e.target.value)}
+                    disabled={!isConnected}
+                    className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
+                  />
+                  <p className="text-sm text-slate-400 mt-1">
+                    LP Balance: {formatTokenAmount(balances.lpTokens)}
+                  </p>
+                </div>
+
+                {removeLiquidityAmount && parseFloat(removeLiquidityAmount) > 0 && (
+                  <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      You'll receive proportional amounts of SENIOR and JUNIOR tokens
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={handleRemoveLiquidity}
+                  disabled={!isConnected || !removeLiquidityAmount || parseFloat(removeLiquidityAmount) <= 0}
+                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
+                >
+                  Remove Liquidity
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Your Positions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-white">CM Tokens</CardTitle>
-              <CardDescription className="text-slate-300">Your CoverVault token balances</CardDescription>
+              <CardTitle className="text-white">Your Positions</CardTitle>
+              <CardDescription className="text-slate-300">Current risk token holdings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <TokenBalance
-                type="senior"
-                balance={parseFloat(formatTokenAmount(balances.seniorTokens))}
-              />
-              <TokenBalance
-                type="junior"
-                balance={parseFloat(formatTokenAmount(balances.juniorTokens))}
-              />
+              <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">SENIOR</p>
+                    <p className="text-slate-400 text-sm">Priority claims</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-medium">{formatTokenAmount(balances.seniorTokens)}</p>
+                  <p className="text-slate-400 text-sm">Value: ${(seniorTokenAmount * parseFloat(seniorPrice)).toFixed(2)}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center">
+                    <Coins className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">JUNIOR</p>
+                    <p className="text-slate-400 text-sm">Higher upside</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-medium">{formatTokenAmount(balances.juniorTokens)}</p>
+                  <p className="text-slate-400 text-sm">Value: ${(juniorTokenAmount * parseFloat(juniorPrice)).toFixed(2)}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                    <Droplets className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">LP TOKENS</p>
+                    <p className="text-slate-400 text-sm">Liquidity provider</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-medium">{formatTokenAmount(balances.lpTokens)}</p>
+                  <p className="text-slate-400 text-sm">Pool share</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-white">Yield Assets</CardTitle>
-              <CardDescription className="text-slate-300">Your underlying asset balances</CardDescription>
+              <CardTitle className="text-white">Protocol Status</CardTitle>
+              <CardDescription className="text-slate-300">Current protocol information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <TokenBalance
-                type="aUSDC"
-                balance={parseFloat(formatTokenAmount(balances.aUSDC))}
-              />
-              <TokenBalance
-                type="cUSDT"
-                balance={parseFloat(formatTokenAmount(balances.cUSDT))}
-              />
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Current Phase:</span>
+                <span className="text-white font-medium">{vaultInfo.currentPhase !== undefined ? Phase[vaultInfo.currentPhase] : 'Loading...'}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Emergency Mode:</span>
+                <span className={`font-medium ${vaultInfo.emergencyMode ? 'text-red-400' : 'text-green-400'}`}>
+                  {vaultInfo.emergencyMode ? '🚨 Active' : '✅ Inactive'}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Total TVL:</span>
+                <span className="text-white font-medium">${((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(2)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Your Share:</span>
+                <span className="text-white font-medium">
+                  {vaultInfo.totalTokensIssued > 0n 
+                    ? ((seniorTokenAmount + juniorTokenAmount) / (Number(vaultInfo.totalTokensIssued) / 1e18) * 100).toFixed(2) 
+                    : '0.00'}%
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>

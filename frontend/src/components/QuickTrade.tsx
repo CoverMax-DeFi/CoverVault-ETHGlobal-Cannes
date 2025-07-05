@@ -6,8 +6,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Shield, TrendingUp, LogOut, Zap } from 'lucide-react';
-import { ethers } from 'ethers';
-import { CONTRACT_ADDRESSES } from '@/config/contracts';
 
 type TradeIntent = 'safety' | 'upside' | 'exit';
 
@@ -19,7 +17,6 @@ const QuickTrade: React.FC = () => {
     juniorTokenAddress,
     swapExactTokensForTokens,
     getAmountsOut,
-    depositAsset,
     withdraw,
   } = useWeb3();
 
@@ -61,8 +58,11 @@ const QuickTrade: React.FC = () => {
       }
     };
 
-    if (intent !== 'exit') {
+    if (intent !== 'exit' && amount && parseFloat(amount) > 0) {
       updateEstimate();
+      // Update estimate every 3 seconds for real-time pricing
+      const interval = setInterval(updateEstimate, 3000);
+      return () => clearInterval(interval);
     }
   }, [amount, intent, seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
 

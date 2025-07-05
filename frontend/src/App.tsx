@@ -8,6 +8,7 @@ import React from "react";
 // Import pages directly
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Trade from "./pages/Trade";
 import Insurance from "./pages/Insurance";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/trade" element={<Trade />} />
           <Route path="/insurance" element={<Insurance />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />

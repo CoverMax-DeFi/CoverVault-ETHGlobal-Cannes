@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Shield, RefreshCw, PlayCircle } from 'lucide-react';
+import { AlertTriangle, Shield, RefreshCw, PlayCircle, Settings, Activity } from 'lucide-react';
 import { Phase, PHASE_NAMES } from '@/config/contracts';
 
 const Admin = () => {
@@ -16,6 +16,9 @@ const Admin = () => {
     toggleEmergencyMode,
     forcePhaseTransition,
     startNewCycle,
+    refreshData,
+    seniorTokenAddress,
+    juniorTokenAddress,
   } = useWeb3();
 
   if (!isConnected) {
@@ -70,9 +73,13 @@ const Admin = () => {
         <div className="grid gap-6">
 
           {/* Protocol Status */}
+          {/* Protocol Status */}
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-white">Protocol Status</CardTitle>
+              <CardTitle className="text-white flex items-center">
+                <Activity className="w-5 h-5 mr-2" />
+                Protocol Status
+              </CardTitle>
               <CardDescription className="text-slate-300">Current protocol state and configuration</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -83,7 +90,9 @@ const Admin = () => {
                 </div>
                 <div>
                   <p className="text-sm text-slate-400">Emergency Mode</p>
-                  <p className="text-lg font-semibold text-white">{vaultInfo.emergencyMode ? 'Active' : 'Inactive'}</p>
+                  <p className={`text-lg font-semibold ${vaultInfo.emergencyMode ? 'text-red-400' : 'text-green-400'}`}>
+                    {vaultInfo.emergencyMode ? '🚨 Active' : '✅ Inactive'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-400">Total Value Locked</p>
@@ -92,40 +101,35 @@ const Admin = () => {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">Admin Address</p>
-                  <p className="text-sm font-mono text-slate-300">{address}</p>
+                  <p className="text-sm text-slate-400">Total Tokens Issued</p>
+                  <p className="text-lg font-semibold text-white">
+                    {(Number(vaultInfo.totalTokensIssued) / 1e18).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t border-slate-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-400">Admin Address</p>
+                    <p className="text-sm font-mono text-slate-300">{address}</p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={refreshData}
+                      variant="outline"
+                      size="sm"
+                      className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh Data
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Emergency Controls */}
-          <Card className="bg-red-900/20 border-red-700 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-red-400">Emergency Controls</CardTitle>
-              <CardDescription className="text-red-300">
-                Emergency mode prioritizes senior token withdrawals
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    Emergency mode is currently: <strong>{vaultInfo.emergencyMode ? 'ACTIVE' : 'INACTIVE'}</strong>
-                  </AlertDescription>
-                </Alert>
-                <Button
-                  onClick={toggleEmergencyMode}
-                  variant={vaultInfo.emergencyMode ? "outline" : "destructive"}
-                  className={vaultInfo.emergencyMode ? "w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500" : "w-full bg-red-600 hover:bg-red-700"}
-                >
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  {vaultInfo.emergencyMode ? 'Deactivate' : 'Activate'} Emergency Mode
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Phase Management */}
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
@@ -189,17 +193,89 @@ const Admin = () => {
             </CardContent>
           </Card>
 
-          {/* Admin Notes */}
+          {/* Emergency Controls */}
+          <Card className="bg-red-900/20 border-red-700 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-red-400">Emergency Controls</CardTitle>
+              <CardDescription className="text-red-300">
+                Emergency mode prioritizes senior token withdrawals
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription>
+                    Emergency mode is currently: <strong>{vaultInfo.emergencyMode ? 'ACTIVE' : 'INACTIVE'}</strong>
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  onClick={toggleEmergencyMode}
+                  variant={vaultInfo.emergencyMode ? "outline" : "destructive"}
+                  className={vaultInfo.emergencyMode ? "w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500" : "w-full bg-red-600 hover:bg-red-700"}
+                >
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  {vaultInfo.emergencyMode ? 'Deactivate' : 'Activate'} Emergency Mode
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+
+          {/* Contract Information */}
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-white">Admin Guidelines</CardTitle>
+              <CardTitle className="text-white flex items-center">
+                <Settings className="w-5 h-5 mr-2" />
+                Contract Information
+              </CardTitle>
+              <CardDescription className="text-slate-300">Protocol contract addresses and configuration</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center p-2 bg-slate-700/30 rounded">
+                  <span className="text-slate-400">Senior Token:</span>
+                  <span className="font-mono text-slate-300 text-xs">{seniorTokenAddress}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-slate-700/30 rounded">
+                  <span className="text-slate-400">Junior Token:</span>
+                  <span className="font-mono text-slate-300 text-xs">{juniorTokenAddress}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Guidelines */}
+          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-white">Admin Guidelines & Best Practices</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-slate-300">
-              <p>• Emergency mode should only be activated when one of the yield sources experiences a significant loss event</p>
-              <p>• Phase transitions normally occur automatically based on time</p>
-              <p>• Force phase transition should only be used in exceptional circumstances</p>
-              <p>• Starting a new cycle resets the protocol to the Deposit phase</p>
-              <p>• Only the contract owner can access these functions</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-white mb-2">Emergency Procedures</h4>
+                  <ul className="space-y-1 text-slate-300">
+                    <li>• Emergency mode should only be activated when yield sources experience significant losses</li>
+                    <li>• Monitor liquidity pools for unusual activity</li>
+                    <li>• Coordinate with governance before major protocol changes</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-white mb-2">Phase Management</h4>
+                  <ul className="space-y-1 text-slate-300">
+                    <li>• Phase transitions normally occur automatically based on time</li>
+                    <li>• Force phase transition should only be used in exceptional circumstances</li>
+                    <li>• Starting a new cycle resets the protocol to the Deposit phase</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <Alert className="bg-amber-900/20 border-amber-700 text-amber-300 mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Important:</strong> Only the contract owner can access these functions. All admin actions are logged on-chain and should be justified to the community.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </div>
