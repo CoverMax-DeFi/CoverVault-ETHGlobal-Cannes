@@ -23,21 +23,21 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
       case 'protected':
         return {
           name: 'Protected Money',
-          color: 'bg-blue-100 text-vault-primary',
+          color: 'bg-blue-600/20 text-blue-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M8 13V4M8 13H4M8 13V20M16 13V4M16 13H20M16 13V20"/>
             </svg>
           ),
           riskLevel: 'First in Line',
-          riskBadge: 'bg-blue-100 text-blue-700',
+          riskBadge: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
           tooltip: 'Protected money gets you to the front of the line during emergencies. Deposited equally into Aave and Compound protocols.',
           protocolInfo: 'Deposited 50% in Aave, 50% in Compound'
         };
       case 'standard':
         return {
           name: 'Regular Money',
-          color: 'bg-green-100 text-vault-secondary',
+          color: 'bg-green-600/20 text-green-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/>
@@ -49,14 +49,14 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
             </svg>
           ),
           riskLevel: 'Regular Access',
-          riskBadge: 'bg-amber-100 text-amber-700',
+          riskBadge: 'bg-amber-600/20 text-amber-400 border-amber-600/30',
           tooltip: 'Regular money earns the same interest but has normal priority during emergencies. Deposited equally into Aave and Compound protocols.',
           protocolInfo: 'Deposited 50% in Aave, 50% in Compound'
         };
       case 'LP':
         return {
           name: 'Pool Helper (Coming Soon)',
-          color: 'bg-purple-100 text-purple-600',
+          color: 'bg-purple-600/20 text-purple-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 3v12"/>
@@ -68,17 +68,17 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
             </svg>
           ),
           riskLevel: 'Earning Extra',
-          riskBadge: 'bg-purple-100 text-purple-700',
+          riskBadge: 'bg-purple-600/20 text-purple-400 border-purple-600/30',
           tooltip: 'Earn bonus rewards by helping the system work smoothly. Your money helps others move between protected and regular accounts.',
           protocolInfo: 'Internal CoverVault liquidity pool'
         };
       default:
         return {
           name: 'Unknown',
-          color: 'bg-gray-100 text-gray-600',
+          color: 'bg-slate-600/20 text-slate-400',
           icon: null,
           riskLevel: 'Unknown',
-          riskBadge: 'bg-gray-100 text-gray-600',
+          riskBadge: 'bg-slate-600/20 text-slate-400 border-slate-600/30',
           tooltip: 'Unknown token type',
           protocolInfo: 'Unknown'
         };
@@ -91,22 +91,22 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
   const dollarValue = balance;
 
   return (
-    <Card className={`overflow-hidden shadow-sm hover:shadow-md transition-shadow ${className}`}>
+    <Card className={`overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-slate-800/50 border-slate-700 backdrop-blur-sm ${className}`}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg ${color}`}>
+            <div className={`p-2 rounded-lg ${color} backdrop-blur-sm`}>
               {icon}
             </div>
             <div>
               <div className="flex items-center">
-                <h3 className="font-medium">{name}</h3>
+                <h3 className="font-medium text-white">{name}</h3>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Info size={16} className="ml-1 text-gray-400" />
+                      <Info size={16} className="ml-1 text-slate-500" />
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent className="bg-slate-800 border-slate-700 text-slate-200">
                       <p className="max-w-xs text-sm">{tooltip}</p>
                     </TooltipContent>
                   </Tooltip>
@@ -117,19 +117,19 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
                   {riskLevel}
                 </Badge>
                 {interestRate && (
-                  <span className="text-xs text-gray-500 ml-2">
+                  <span className="text-xs text-slate-400 ml-2">
                     Growing: {(interestRate * 100).toFixed(2)}% per year
                   </span>
                 )}
               </div>
               {/* Protocol information */}
               {type !== 'LP' && (
-                <div className="flex items-center mt-2 text-xs text-gray-500">
+                <div className="flex items-center mt-2 text-xs text-slate-400">
                   <div className="flex items-center space-x-1">
-                    <Landmark size={12} className="text-purple-500" />
+                    <Landmark size={12} className="text-purple-400" />
                     <span>Aave</span>
                     <span className="mx-1">•</span>
-                    <Building2 size={12} className="text-green-500" />
+                    <Building2 size={12} className="text-green-400" />
                     <span>Compound</span>
                   </div>
                 </div>
@@ -137,12 +137,12 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
             </div>
           </div>
           <div className="text-right">
-            <p className="font-semibold text-xl">{balance.toFixed(2)}</p>
-            <div className="text-xs text-gray-500">
+            <p className="font-semibold text-xl text-white">{balance.toFixed(2)}</p>
+            <div className="text-xs text-slate-400">
               <span>${dollarValue.toFixed(2)}</span>
             </div>
             {type !== 'LP' && (
-              <div className="text-xs text-gray-400 mt-1">
+              <div className="text-xs text-slate-500 mt-1">
                 via Aave + Compound
               </div>
             )}

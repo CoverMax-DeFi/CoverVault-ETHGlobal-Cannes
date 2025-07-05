@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useWeb3 } from '@/context/Web3Context';
+import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Logo from '@/assets/images/CoverVault.svg';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

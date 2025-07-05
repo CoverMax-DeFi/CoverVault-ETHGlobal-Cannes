@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useWeb3 } from '@/context/Web3Context';
+import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/Navbar';
 import PhaseDisplay from '@/components/PhaseDisplay';
@@ -93,20 +93,27 @@ const Dashboard = () => {
     parseFloat(formatTokenAmount(balances.juniorTokens));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-40 right-20 w-60 h-60 bg-green-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      </div>
+      
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="relative z-10 container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">CoverVault Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-white mb-2">CoverVault Dashboard</h1>
+          <p className="text-slate-300">
             Manage your insured deposits and track protocol performance
           </p>
         </div>
 
         {/* Connection Status */}
         {!isConnected && (
-          <Alert className="mb-6">
+          <Alert className="mb-6 bg-slate-800/50 border-slate-700 text-slate-300">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Please connect your wallet to interact with the protocol
@@ -149,24 +156,24 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="deposit" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="deposit">Deposit</TabsTrigger>
-            <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
-            <TabsTrigger value="balances">Balances</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-slate-800/50 border-slate-700">
+            <TabsTrigger value="deposit" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-300">Deposit</TabsTrigger>
+            <TabsTrigger value="withdraw" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-300">Withdraw</TabsTrigger>
+            <TabsTrigger value="balances" className="data-[state=active]:bg-slate-700 data-[state=active]:text-white text-slate-300">Balances</TabsTrigger>
           </TabsList>
 
           {/* Deposit Tab */}
           <TabsContent value="deposit">
-            <Card>
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Deposit Assets</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-white">Deposit Assets</CardTitle>
+                <CardDescription className="text-slate-300">
                   Deposit aUSDC or cUSDT to receive equal amounts of CM-SENIOR and CM-JUNIOR tokens
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {vaultInfo.currentPhase !== Phase.DEPOSIT ? (
-                  <Alert>
+                  <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Deposits are only allowed during the Deposit phase. Current phase: {Phase[vaultInfo.currentPhase]}
@@ -175,20 +182,20 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <div>
-                      <Label>Select Asset</Label>
+                      <Label className="text-slate-300">Select Asset</Label>
                       <RadioGroup value={depositAssetType} onValueChange={(v) => setDepositAssetType(v as 'aUSDC' | 'cUSDT')}>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="aUSDC" id="aUSDC" />
-                          <Label htmlFor="aUSDC">aUSDC (Balance: {formatTokenAmount(balances.aUSDC)})</Label>
+                          <Label htmlFor="aUSDC" className="text-slate-300">aUSDC (Balance: {formatTokenAmount(balances.aUSDC)})</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="cUSDT" id="cUSDT" />
-                          <Label htmlFor="cUSDT">cUSDT (Balance: {formatTokenAmount(balances.cUSDT)})</Label>
+                          <Label htmlFor="cUSDT" className="text-slate-300">cUSDT (Balance: {formatTokenAmount(balances.cUSDT)})</Label>
                         </div>
                       </RadioGroup>
                     </div>
                     <div>
-                      <Label htmlFor="deposit-amount">Amount</Label>
+                      <Label htmlFor="deposit-amount" className="text-slate-300">Amount</Label>
                       <Input
                         id="deposit-amount"
                         type="number"
@@ -196,9 +203,10 @@ const Dashboard = () => {
                         value={depositAmount}
                         onChange={(e) => setDepositAmount(e.target.value)}
                         disabled={!isConnected}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
                       />
                     </div>
-                    <Alert>
+                    <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                       <Info className="h-4 w-4" />
                       <AlertDescription>
                         You will receive {depositAmount || '0'} CM-SENIOR and {depositAmount || '0'} CM-JUNIOR tokens
@@ -207,7 +215,7 @@ const Dashboard = () => {
                     <Button 
                       onClick={handleDeposit} 
                       disabled={!isConnected || !depositAmount || vaultInfo.currentPhase !== Phase.DEPOSIT}
-                      className="w-full"
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       Deposit {depositAssetType}
                     </Button>
@@ -221,16 +229,16 @@ const Dashboard = () => {
           <TabsContent value="withdraw">
             <div className="space-y-6">
               {/* Regular Withdrawal */}
-              <Card>
+              <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>Withdraw Tokens</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-white">Withdraw Tokens</CardTitle>
+                  <CardDescription className="text-slate-300">
                     Withdraw your tokens based on the current phase rules
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {vaultInfo.currentPhase === Phase.CLAIMS && (
-                    <Alert>
+                    <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                       <Info className="h-4 w-4" />
                       <AlertDescription>
                         Claims phase: Only senior token withdrawals are allowed
@@ -239,7 +247,7 @@ const Dashboard = () => {
                   )}
                   
                   <div>
-                    <Label htmlFor="senior-amount">CM-SENIOR Amount</Label>
+                    <Label htmlFor="senior-amount" className="text-slate-300">CM-SENIOR Amount</Label>
                     <Input
                       id="senior-amount"
                       type="number"
@@ -247,15 +255,16 @@ const Dashboard = () => {
                       value={withdrawSeniorAmount}
                       onChange={(e) => setWithdrawSeniorAmount(e.target.value)}
                       disabled={!isConnected}
+                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
                     />
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-slate-400 mt-1">
                       Balance: {formatTokenAmount(balances.seniorTokens)}
                     </p>
                   </div>
 
                   {vaultInfo.currentPhase !== Phase.CLAIMS && (
                     <div>
-                      <Label htmlFor="junior-amount">CM-JUNIOR Amount</Label>
+                      <Label htmlFor="junior-amount" className="text-slate-300">CM-JUNIOR Amount</Label>
                       <Input
                         id="junior-amount"
                         type="number"
@@ -263,15 +272,16 @@ const Dashboard = () => {
                         value={withdrawJuniorAmount}
                         onChange={(e) => setWithdrawJuniorAmount(e.target.value)}
                         disabled={!isConnected}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
                       />
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-slate-400 mt-1">
                         Balance: {formatTokenAmount(balances.juniorTokens)}
                       </p>
                     </div>
                   )}
 
                   {(withdrawSeniorAmount || withdrawJuniorAmount) && (
-                    <Alert>
+                    <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                       <Info className="h-4 w-4" />
                       <AlertDescription>
                         Estimated withdrawal: {estimatedWithdrawal.aUSDC} aUSDC + {estimatedWithdrawal.cUSDT} cUSDT
@@ -283,7 +293,7 @@ const Dashboard = () => {
                     <Button 
                       onClick={handleWithdraw} 
                       disabled={!isConnected || (!withdrawSeniorAmount && !withdrawJuniorAmount)}
-                      className="w-full"
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                     >
                       Withdraw
                     </Button>
@@ -293,7 +303,7 @@ const Dashboard = () => {
                         onClick={withdrawAll} 
                         disabled={!isConnected}
                         variant="outline"
-                        className="w-full"
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500"
                       >
                         Withdraw All
                       </Button>
@@ -304,16 +314,16 @@ const Dashboard = () => {
 
               {/* Emergency Withdrawal */}
               {vaultInfo.emergencyMode && (
-                <Card className="border-red-200">
+                <Card className="bg-red-900/20 border-red-700 backdrop-blur-sm">
                   <CardHeader>
-                    <CardTitle className="text-red-600">Emergency Withdrawal</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-red-400">Emergency Withdrawal</CardTitle>
+                    <CardDescription className="text-red-300">
                       Emergency mode is active. Senior token holders can withdraw with preferred asset.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="emergency-amount">CM-SENIOR Amount</Label>
+                      <Label htmlFor="emergency-amount" className="text-slate-300">CM-SENIOR Amount</Label>
                       <Input
                         id="emergency-amount"
                         type="number"
@@ -321,18 +331,19 @@ const Dashboard = () => {
                         value={emergencyAmount}
                         onChange={(e) => setEmergencyAmount(e.target.value)}
                         disabled={!isConnected}
+                        className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
                       />
                     </div>
                     <div>
-                      <Label>Preferred Asset</Label>
+                      <Label className="text-slate-300">Preferred Asset</Label>
                       <RadioGroup value={preferredAsset} onValueChange={(v) => setPreferredAsset(v as 'aUSDC' | 'cUSDT')}>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="aUSDC" id="em-aUSDC" />
-                          <Label htmlFor="em-aUSDC">aUSDC</Label>
+                          <Label htmlFor="em-aUSDC" className="text-slate-300">aUSDC</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="cUSDT" id="em-cUSDT" />
-                          <Label htmlFor="em-cUSDT">cUSDT</Label>
+                          <Label htmlFor="em-cUSDT" className="text-slate-300">cUSDT</Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -340,7 +351,7 @@ const Dashboard = () => {
                       onClick={handleEmergencyWithdraw} 
                       disabled={!isConnected || !emergencyAmount}
                       variant="destructive"
-                      className="w-full"
+                      className="w-full bg-red-600 hover:bg-red-700"
                     >
                       Emergency Withdraw
                     </Button>
@@ -353,10 +364,10 @@ const Dashboard = () => {
           {/* Balances Tab */}
           <TabsContent value="balances">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+              <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>CM Tokens</CardTitle>
-                  <CardDescription>Your CoverVault token balances</CardDescription>
+                  <CardTitle className="text-white">CM Tokens</CardTitle>
+                  <CardDescription className="text-slate-300">Your CoverVault token balances</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <TokenBalance
@@ -374,10 +385,10 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>Yield Assets</CardTitle>
-                  <CardDescription>Your underlying asset balances</CardDescription>
+                  <CardTitle className="text-white">Yield Assets</CardTitle>
+                  <CardDescription className="text-slate-300">Your underlying asset balances</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <TokenBalance

@@ -32,7 +32,7 @@ export const PercentCircle: React.FC<PercentCircleProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#e5e7eb" // gray-200
+          stroke="#475569" // slate-600
           strokeWidth={strokeWidth}
           fill="none"
         />

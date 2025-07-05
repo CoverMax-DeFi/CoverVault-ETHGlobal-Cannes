@@ -75,7 +75,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
   };
 
   return (
-    <Card className="w-full shadow-sm hover:shadow-md transition-shadow">
+    <Card className="w-full shadow-sm hover:shadow-md transition-shadow bg-slate-800/50 border-slate-700 backdrop-blur-sm">
       <CardContent className="space-y-4 pt-6">
         <div className="flex items-center space-x-2">
           <Input
@@ -83,21 +83,21 @@ const ActionCard: React.FC<ActionCardProps> = ({
             value={amount || ''}
             onChange={handleInputChange}
             placeholder={isPercentage ? "Percentage" : "Amount"}
-            className="flex-1"
+            className="flex-1 bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
             min={0}
             max={isPercentage ? 100 : maxValue}
             step={isPercentage ? 1 : 0.01}
           />
-          <span className="text-sm font-medium">
+          <span className="text-sm font-medium text-slate-300">
             {isPercentage ? '%' : '$'}
           </span>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-sm text-gray-500">0%</span>
-            <span className="text-sm text-gray-500">50%</span>
-            <span className="text-sm text-gray-500">100%</span>
+            <span className="text-sm text-slate-400">0%</span>
+            <span className="text-sm text-slate-400">50%</span>
+            <span className="text-sm text-slate-400">100%</span>
           </div>
           <Slider
             value={[percentage]}
@@ -113,7 +113,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
             variant="outline"
             size="sm"
             onClick={handleHalf}
-            className="flex-1"
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500"
           >
             50%
           </Button>
@@ -121,7 +121,7 @@ const ActionCard: React.FC<ActionCardProps> = ({
             variant="outline"
             size="sm"
             onClick={handleMax}
-            className="flex-1"
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500"
           >
             Max
           </Button>
@@ -133,8 +133,8 @@ const ActionCard: React.FC<ActionCardProps> = ({
           disabled={disabled || amount <= 0}
           className={`w-full ${
             isWithdraw
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-vault-primary hover:bg-vault-primary-dark'
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
           }`}
         >
           {buttonText}

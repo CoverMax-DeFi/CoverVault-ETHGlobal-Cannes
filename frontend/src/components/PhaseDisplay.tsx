@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useWeb3 } from '@/context/Web3Context';
+import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { PHASE_NAMES, Phase } from '@/config/contracts';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -96,7 +96,7 @@ const PhaseDisplay: React.FC = () => {
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur-sm">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -104,14 +104,14 @@ const PhaseDisplay: React.FC = () => {
               {getPhaseIcon()}
             </div>
             <div>
-              <h3 className="text-lg font-semibold">
+              <h3 className="text-lg font-semibold text-white">
                 {PHASE_NAMES[vaultInfo.currentPhase as Phase]}
               </h3>
-              <p className="text-sm text-gray-600">Current Protocol Phase</p>
+              <p className="text-sm text-slate-400">Current Protocol Phase</p>
             </div>
           </div>
           {vaultInfo.emergencyMode && (
-            <Badge variant="destructive" className="animate-pulse">
+            <Badge variant="destructive" className="animate-pulse bg-red-600 hover:bg-red-700">
               Emergency Mode Active
             </Badge>
           )}
@@ -119,24 +119,24 @@ const PhaseDisplay: React.FC = () => {
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Time Remaining</span>
-            <span className="font-medium">{timeRemaining}</span>
+            <span className="text-slate-400">Time Remaining</span>
+            <span className="font-medium text-white">{timeRemaining}</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        <p className="text-sm text-gray-600">{getPhaseDescription()}</p>
+        <p className="text-sm text-slate-300">{getPhaseDescription()}</p>
 
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Vault TVL</p>
-            <p className="text-lg font-semibold">
+            <p className="text-sm text-slate-400">Vault TVL</p>
+            <p className="text-lg font-semibold text-white">
               ${((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(2)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total Tokens Issued</p>
-            <p className="text-lg font-semibold">
+            <p className="text-sm text-slate-400">Total Tokens Issued</p>
+            <p className="text-lg font-semibold text-white">
               {(Number(vaultInfo.totalTokensIssued) / 1e18).toFixed(2)}
             </p>
           </div>

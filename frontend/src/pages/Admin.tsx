@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useWeb3 } from '@/context/Web3Context';
+import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,17 @@ const Admin = () => {
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute bottom-40 right-20 w-60 h-60 bg-green-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        </div>
+        
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Alert>
+        <div className="relative z-10 container mx-auto px-6 py-8">
+          <Alert className="bg-slate-800/50 border-slate-700 text-slate-300">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               Please connect your wallet to access admin functions
@@ -35,20 +42,27 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute top-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-40 right-20 w-60 h-60 bg-green-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      </div>
+      
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="relative z-10 container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+          <p className="text-slate-300">
             Protocol administration and emergency controls
           </p>
         </div>
 
-        <Alert className="mb-6" variant="destructive">
+        <Alert className="mb-6 bg-red-900/20 border-red-700 backdrop-blur-sm" variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
+          <AlertDescription className="text-red-300">
             <strong>Warning:</strong> Admin functions can significantly affect protocol operation. Use with caution.
           </AlertDescription>
         </Alert>
@@ -56,46 +70,46 @@ const Admin = () => {
         <div className="grid gap-6">
 
           {/* Protocol Status */}
-          <Card>
+          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Protocol Status</CardTitle>
-              <CardDescription>Current protocol state and configuration</CardDescription>
+              <CardTitle className="text-white">Protocol Status</CardTitle>
+              <CardDescription className="text-slate-300">Current protocol state and configuration</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Current Phase</p>
-                  <p className="text-lg font-semibold">{PHASE_NAMES[vaultInfo.currentPhase as Phase]}</p>
+                  <p className="text-sm text-slate-400">Current Phase</p>
+                  <p className="text-lg font-semibold text-white">{PHASE_NAMES[vaultInfo.currentPhase as Phase]}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Emergency Mode</p>
-                  <p className="text-lg font-semibold">{vaultInfo.emergencyMode ? 'Active' : 'Inactive'}</p>
+                  <p className="text-sm text-slate-400">Emergency Mode</p>
+                  <p className="text-lg font-semibold text-white">{vaultInfo.emergencyMode ? 'Active' : 'Inactive'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Value Locked</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-sm text-slate-400">Total Value Locked</p>
+                  <p className="text-lg font-semibold text-white">
                     ${((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(2)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Admin Address</p>
-                  <p className="text-sm font-mono">{address}</p>
+                  <p className="text-sm text-slate-400">Admin Address</p>
+                  <p className="text-sm font-mono text-slate-300">{address}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Emergency Controls */}
-          <Card className="border-red-200">
+          <Card className="bg-red-900/20 border-red-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-red-600">Emergency Controls</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-red-400">Emergency Controls</CardTitle>
+              <CardDescription className="text-red-300">
                 Emergency mode prioritizes senior token withdrawals
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <Alert>
+                <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                   <Shield className="h-4 w-4" />
                   <AlertDescription>
                     Emergency mode is currently: <strong>{vaultInfo.emergencyMode ? 'ACTIVE' : 'INACTIVE'}</strong>
@@ -104,7 +118,7 @@ const Admin = () => {
                 <Button
                   onClick={toggleEmergencyMode}
                   variant={vaultInfo.emergencyMode ? "outline" : "destructive"}
-                  className="w-full"
+                  className={vaultInfo.emergencyMode ? "w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500" : "w-full bg-red-600 hover:bg-red-700"}
                 >
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   {vaultInfo.emergencyMode ? 'Deactivate' : 'Activate'} Emergency Mode
@@ -114,30 +128,30 @@ const Admin = () => {
           </Card>
 
           {/* Phase Management */}
-          <Card>
+          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Phase Management</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-white">Phase Management</CardTitle>
+              <CardDescription className="text-slate-300">
                 Control protocol lifecycle phases
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Phase Progression:</p>
+              <div className="p-4 bg-slate-700/50 rounded-lg backdrop-blur-sm">
+                <p className="text-sm text-slate-400 mb-2">Phase Progression:</p>
                 <div className="flex items-center space-x-2 text-sm">
-                  <span className={vaultInfo.currentPhase === Phase.DEPOSIT ? 'font-bold' : ''}>
+                  <span className={vaultInfo.currentPhase === Phase.DEPOSIT ? 'font-bold text-white' : 'text-slate-300'}>
                     Deposit (2d)
                   </span>
-                  <span>→</span>
-                  <span className={vaultInfo.currentPhase === Phase.COVERAGE ? 'font-bold' : ''}>
+                  <span className="text-slate-400">→</span>
+                  <span className={vaultInfo.currentPhase === Phase.COVERAGE ? 'font-bold text-white' : 'text-slate-300'}>
                     Coverage (3d)
                   </span>
-                  <span>→</span>
-                  <span className={vaultInfo.currentPhase === Phase.CLAIMS ? 'font-bold' : ''}>
+                  <span className="text-slate-400">→</span>
+                  <span className={vaultInfo.currentPhase === Phase.CLAIMS ? 'font-bold text-white' : 'text-slate-300'}>
                     Claims (1d)
                   </span>
-                  <span>→</span>
-                  <span className={vaultInfo.currentPhase === Phase.FINAL_CLAIMS ? 'font-bold' : ''}>
+                  <span className="text-slate-400">→</span>
+                  <span className={vaultInfo.currentPhase === Phase.FINAL_CLAIMS ? 'font-bold text-white' : 'text-slate-300'}>
                     Final Claims (1d)
                   </span>
                 </div>
@@ -147,7 +161,7 @@ const Admin = () => {
                 <Button
                   onClick={forcePhaseTransition}
                   variant="outline"
-                  className="w-full"
+                  className="w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Force Phase Transition
@@ -157,7 +171,7 @@ const Admin = () => {
                   <Button
                     onClick={startNewCycle}
                     variant="default"
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   >
                     <PlayCircle className="mr-2 h-4 w-4" />
                     Start New Cycle
@@ -166,7 +180,7 @@ const Admin = () => {
               </div>
 
               {vaultInfo.currentPhase !== Phase.FINAL_CLAIMS && (
-                <Alert>
+                <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                   <AlertDescription>
                     New cycles can only be started from the Final Claims phase
                   </AlertDescription>
@@ -176,11 +190,11 @@ const Admin = () => {
           </Card>
 
           {/* Admin Notes */}
-          <Card>
+          <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Admin Guidelines</CardTitle>
+              <CardTitle className="text-white">Admin Guidelines</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-gray-600">
+            <CardContent className="space-y-2 text-sm text-slate-300">
               <p>• Emergency mode should only be activated when one of the yield sources experiences a significant loss event</p>
               <p>• Phase transitions normally occur automatically based on time</p>
               <p>• Force phase transition should only be used in exceptional circumstances</p>

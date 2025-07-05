@@ -256,14 +256,14 @@ const InsuranceCalculator: React.FC = () => {
   }, [transactionState]);
 
   return (
-    <Card className="w-full shadow-sm hover:shadow-md transition-shadow" data-intro-id="insurance-calculator-card">
+    <Card className="w-full shadow-sm hover:shadow-md transition-shadow bg-slate-800/50 border-slate-700 backdrop-blur-sm" data-intro-id="insurance-calculator-card">
       <CardHeader>
-        <CardTitle>Choose How Much Money to Protect</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-white">Choose How Much Money to Protect</CardTitle>
+        <CardDescription className="text-slate-300">
           Decide how much of your money you want to keep extra safe during emergencies. More protection costs a small fee, but gives you peace of mind.
         </CardDescription>
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4">
-          <p className="text-blue-700 text-sm">
+        <div className="bg-blue-900/20 border border-blue-700 rounded-md p-3 mt-4 backdrop-blur-sm">
+          <p className="text-blue-300 text-sm">
             💡 <strong>Remember:</strong> You can always get your safety fees back by resetting to 50% protection level - as long as there's been no hack!
           </p>
         </div>
@@ -272,8 +272,8 @@ const InsuranceCalculator: React.FC = () => {
         {/* Coverage Percentage Selector */}
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <Label className="text-base">How Much to Protect</Label>
-            <span className="text-sm font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded">
+            <Label className="text-base text-white">How Much to Protect</Label>
+            <span className="text-sm font-medium bg-blue-600/20 text-blue-400 px-2 py-1 rounded border border-blue-600/30">
               {coverageState.percentage.toFixed(0)}% Safe Money
             </span>
           </div>
@@ -318,11 +318,11 @@ const InsuranceCalculator: React.FC = () => {
                 className="w-full"
               />
               {coverageState.capWarning && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-700">
+                <div className="mt-2 p-2 bg-amber-900/20 border border-amber-700 rounded-md text-sm text-amber-400 backdrop-blur-sm">
                   {coverageState.capWarning}
                 </div>
               )}
-              <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <div className="flex justify-between mt-2 text-xs text-slate-400">
                 <span>More Risk</span>
                 <span>Balanced</span>
                 <span>Extra Safe</span>
@@ -337,8 +337,8 @@ const InsuranceCalculator: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
-            <p>Currently protected: <span className="font-medium">{effectiveProtectionPercent.toFixed(1)}%</span> of your money (${aaTokenValue.toFixed(2)})</p>
+          <div className="text-sm text-slate-300 bg-blue-900/20 p-3 rounded-md backdrop-blur-sm border border-blue-700">
+            <p>Currently protected: <span className="font-medium text-white">{effectiveProtectionPercent.toFixed(1)}%</span> of your money (${aaTokenValue.toFixed(2)})</p>
             <p className="text-xs mt-1">
               Your money is split between protected (extra safe) and regular accounts.
               The safety fee is higher for larger amounts - like paying more for better insurance.
@@ -348,23 +348,23 @@ const InsuranceCalculator: React.FC = () => {
 
         {/* Visual Breakdown */}
         <div className="grid grid-cols-2 gap-4 pt-4" data-intro-id="protection-outputs-section">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium mb-2 flex items-center">
-              <Shield className="h-4 w-4 mr-1 text-blue-600" />
+          <div className="bg-slate-700/50 p-4 rounded-lg backdrop-blur-sm">
+            <h3 className="text-sm font-medium mb-2 flex items-center text-white">
+              <Shield className="h-4 w-4 mr-1 text-blue-400" />
               Protected Money (First in Line)
             </h3>
-            <p className="text-xl font-semibold">${targetAaDisplayValue.toFixed(2)}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xl font-semibold text-white">${targetAaDisplayValue.toFixed(2)}</p>
+            <p className="text-xs text-slate-400 mt-1">
               {Math.max(0, isNaN(coverageState.targetAaTokens) ? 0 : coverageState.targetAaTokens).toFixed(2)} Protected Units
             </p>
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium mb-2 flex items-center">
-              <Shield className="h-4 w-4 mr-1 text-amber-600" strokeWidth={1} />
+          <div className="bg-slate-700/50 p-4 rounded-lg backdrop-blur-sm">
+            <h3 className="text-sm font-medium mb-2 flex items-center text-white">
+              <Shield className="h-4 w-4 mr-1 text-amber-400" strokeWidth={1} />
               Regular Money
             </h3>
-            <p className="text-xl font-semibold">${targetADisplayValue.toFixed(2)}</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xl font-semibold text-white">${targetADisplayValue.toFixed(2)}</p>
+            <p className="text-xs text-slate-400 mt-1">
               {Math.max(0, isNaN(coverageState.targetATokens) ? 0 : coverageState.targetATokens).toFixed(2)} Regular Units
             </p>
           </div>
@@ -372,34 +372,34 @@ const InsuranceCalculator: React.FC = () => {
 
         {/* Transaction Details */}
         {(coverageState.aaToBuy > 0 || coverageState.aaToSell > 0) && (
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-medium mb-3">What This Will Cost</h3>
+          <div className="border-t border-slate-700 pt-4">
+            <h3 className="text-sm font-medium mb-3 text-white">What This Will Cost</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Safety Fee</span>
-                <span className={transactionState.isPremium ? "text-amber-700" : "text-green-700"}>
+                <span className="text-slate-400">Safety Fee</span>
+                <span className={transactionState.isPremium ? "text-amber-400" : "text-green-400"}>
                   ${Math.abs(premiumOrDiscount).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Service Fee (0.3%)</span>
-                <span className="text-gray-700">
+                <span className="text-slate-400">Service Fee (0.3%)</span>
+                <span className="text-slate-300">
                   ${(transactionState.costOrProceeds * 0.003).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">What's Happening</span>
-                <span>
+                <span className="text-slate-400">What's Happening</span>
+                <span className="text-slate-300">
                   {transactionState.isPremium
                     ? `Moving $${Math.max(0, transactionState.costOrProceeds).toFixed(2)} to Protected`
                     : `Moving $${Math.max(0, transactionState.costOrProceeds).toFixed(2)} to Regular`}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Current Exchange Rate</span>
-                <span>{rateDisplayString.replace('A', 'Regular').replace('AA', 'Protected')}</span>
+                <span className="text-slate-400">Current Exchange Rate</span>
+                <span className="text-slate-300">{rateDisplayString.replace('A', 'Regular').replace('AA', 'Protected')}</span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-slate-400 mt-1">
                 {transactionState.isPremium ? (
                   <span>
                     Fees help keep the system running smoothly and safely for everyone. You can get these fees back by moving money back to regular status later (if no hack occurs).
@@ -415,15 +415,15 @@ const InsuranceCalculator: React.FC = () => {
         )}
 
         {/* Emergency Scenario */}
-        <div className="bg-amber-50 p-4 rounded-lg border border-amber-100" data-intro-id="emergency-scenario-section">
+        <div className="bg-amber-900/20 p-4 rounded-lg border border-amber-700 backdrop-blur-sm" data-intro-id="emergency-scenario-section">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="font-medium text-amber-800">What If Something Bad Happens?</h3>
+            <h3 className="font-medium text-amber-400">What If Something Bad Happens?</h3>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <Info size={16} className="text-amber-500" />
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="bg-slate-800 border-slate-700 text-slate-200">
                   <p className="max-w-xs text-sm">
                     See how much money you'd keep safe in different emergency situations. Protected money gets you to the front of the line to withdraw first.
                   </p>
@@ -434,46 +434,46 @@ const InsuranceCalculator: React.FC = () => {
 
           {/* Severity Selector */}
           <div className="mb-3">
-            <Label htmlFor="severity" className="text-sm text-amber-800 mb-1 block">
+            <Label htmlFor="severity" className="text-sm text-amber-400 mb-1 block">
               How Bad is the Emergency:
             </Label>
             <Select
               value={severity}
               onValueChange={setSeverity}
             >
-              <SelectTrigger id="severity" className="w-full bg-white" data-intro-id="severity-select">
+              <SelectTrigger id="severity" className="w-full bg-slate-700/50 border-slate-600 text-white" data-intro-id="severity-select">
                 <SelectValue placeholder="Select severity" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25% - Small Problem</SelectItem>
-                <SelectItem value="50">50% - Medium Problem</SelectItem>
-                <SelectItem value="75">75% - Big Problem</SelectItem>
-                <SelectItem value="100">100% - Worst Case (Everything Lost)</SelectItem>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="25" className="text-white hover:bg-slate-700">25% - Small Problem</SelectItem>
+                <SelectItem value="50" className="text-white hover:bg-slate-700">50% - Medium Problem</SelectItem>
+                <SelectItem value="75" className="text-white hover:bg-slate-700">75% - Big Problem</SelectItem>
+                <SelectItem value="100" className="text-white hover:bg-slate-700">100% - Worst Case (Everything Lost)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-amber-700 mt-1">
+            <p className="text-xs text-amber-300 mt-1">
               In a {severityPercentage}% emergency, regular money loses {severityPercentage}% of its value
             </p>
           </div>
 
           <div className="space-y-2" data-intro-id="emergency-outcome-display">
             <div className="flex justify-between text-sm">
-              <span>Protected money you get back right away</span>
-              <span className="font-medium">${emergencyProtectedAmount.toFixed(2)}</span>
+              <span className="text-amber-300">Protected money you get back right away</span>
+              <span className="font-medium text-white">${emergencyProtectedAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>Regular money you might get back</span>
-              <span className="font-medium">${emergencyUnprotectedAmount.toFixed(2)}</span>
+              <span className="text-amber-300">Regular money you might get back</span>
+              <span className="font-medium text-white">${emergencyUnprotectedAmount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-amber-200">
-              <span>Total money you'd keep</span>
-              <span>${totalRecoveredValue.toFixed(2)}</span>
+            <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-amber-600">
+              <span className="text-amber-300">Total money you'd keep</span>
+              <span className="text-white">${totalRecoveredValue.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-amber-800 mt-2">
+            <div className="flex justify-between text-sm text-amber-400 mt-2">
               <span>Extra money saved by protection</span>
               <span>${lossAvoided.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-amber-700 mt-1">
+            <p className="text-xs text-amber-300 mt-1">
               This shows how much more money you'd keep by having protection versus keeping everything in regular accounts
             </p>
           </div>
@@ -484,7 +484,7 @@ const InsuranceCalculator: React.FC = () => {
           data-intro-id="apply-protection-button"
           onClick={handleAdjustCoverage}
           disabled={!canAdjust || (transactionState.costOrProceeds === 0)}
-          className="w-full bg-vault-primary hover:bg-vault-primary-dark"
+          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
         >
           {!canAdjust
             ? transactionState.isPremium ? "Not enough regular money" : "Not enough protected money"
