@@ -193,7 +193,7 @@ const QuickTrade: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <Zap className="w-5 h-5 mr-2" />
-            Quick Trade
+            Trade
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -210,7 +210,7 @@ const QuickTrade: React.FC = () => {
       <CardHeader>
         <CardTitle className="text-white flex items-center">
           <Zap className="w-5 h-5 mr-2" />
-          Quick Trade - Rebalance Your Risk
+          Rebalance Your Risk
         </CardTitle>
         <p className="text-slate-400 text-sm mt-1">
           Tell us what you want to do

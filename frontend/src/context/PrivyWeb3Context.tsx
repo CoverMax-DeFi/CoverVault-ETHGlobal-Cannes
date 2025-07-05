@@ -634,14 +634,25 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const amountOutMinWei = ethers.parseEther(amountOutMin);
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
   
-        // Approve token spending if needed
+        // Check token balance first
         const inputToken = new Contract(path[0], ERC20_ABI, signer);
+        const balance = await inputToken.balanceOf(address);
+        
+        if (balance < amountInWei) {
+          toast.error('Insufficient token balance');
+          return;
+        }
+
+        // Approve token spending if needed
         const allowance = await inputToken.allowance(address, CONTRACT_ADDRESSES.UniswapV2Router02);
         
         if (allowance < amountInWei) {
-          const approveTx = await inputToken.approve(CONTRACT_ADDRESSES.UniswapV2Router02, amountInWei);
+          // Approve maximum amount to avoid repeated approvals
+          const maxApproval = ethers.MaxUint256;
+          const approveTx = await inputToken.approve(CONTRACT_ADDRESSES.UniswapV2Router02, maxApproval);
           toast.info('Approving token...');
           await approveTx.wait();
+          toast.success('Token approved');
         }
   
         // Execute swap

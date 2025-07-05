@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Shield, TrendingUp, Scale, Zap, DollarSign, AlertCircle } from 'lucide-react';
 import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
 import SmartLiquiditySuggestion from './SmartLiquiditySuggestion';
+import { ethers } from 'ethers';
 
 type TradeIntent = 'safety' | 'upside' | 'equalize' | 'fullCoverage' | 'fullRisk' | 'balanced' | 'maxSafety' | 'maxUpside' | 'addLiquidity';
 
@@ -20,7 +21,6 @@ const QuickTrade: React.FC = () => {
     juniorTokenAddress,
     swapExactTokensForTokens,
     getAmountsOut,
-    withdraw,
     depositAsset,
     addLiquidity,
     refreshData,
@@ -28,10 +28,7 @@ const QuickTrade: React.FC = () => {
     getTokenBalance,
   } = useWeb3();
 
-  const [intent, setIntent] = useState<TradeIntent>('fullCoverage');
-  const [amount, setAmount] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
-  const [estimatedOutput, setEstimatedOutput] = useState('0');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAssetType, setDepositAssetType] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
   const [showLiquiditySuggestion, setShowLiquiditySuggestion] = useState(false);
@@ -41,45 +38,6 @@ const QuickTrade: React.FC = () => {
   const juniorValue = Number(balances.juniorTokens) / 1e18;
   const aUSDCValue = Number(balances.aUSDC) / 1e18;
   const cUSDTValue = Number(balances.cUSDT) / 1e18;
-  const totalAssets = aUSDCValue + cUSDTValue;
-  
-  const handleEqualizeRisk = async () => {
-    try {
-      // Calculate the difference to equalize
-      const totalValue = seniorValue + juniorValue; // Using token amounts instead of USD values for simplicity
-      const targetAmount = totalValue / 2;
-      
-      // Determine which token to swap and how much
-      if (seniorValue > targetAmount) {
-        // Need to swap some SENIOR to JUNIOR
-        const swapAmount = seniorValue - targetAmount;
-        
-        if (swapAmount > 0.000001 && seniorTokenAddress && juniorTokenAddress) {
-          const path = [seniorTokenAddress, juniorTokenAddress];
-          const swapAmountString = swapAmount.toFixed(18);
-          const estimate = await getAmountsOut(swapAmountString, path);
-          const minOutput = (parseFloat(estimate) * 0.95).toFixed(18); // 5% slippage
-          
-          await swapExactTokensForTokens(swapAmountString, minOutput, path);
-        }
-      } else if (juniorValue > targetAmount) {
-        // Need to swap some JUNIOR to SENIOR
-        const swapAmount = juniorValue - targetAmount;
-        
-        if (swapAmount > 0.000001 && seniorTokenAddress && juniorTokenAddress) {
-          const path = [juniorTokenAddress, seniorTokenAddress];
-          const swapAmountString = swapAmount.toFixed(18);
-          const estimate = await getAmountsOut(swapAmountString, path);
-          const minOutput = (parseFloat(estimate) * 0.95).toFixed(18); // 5% slippage
-          
-          await swapExactTokensForTokens(swapAmountString, minOutput, path);
-        }
-      }
-    } catch (error) {
-      console.error('Equalize risk failed:', error);
-      throw error;
-    }
-  };
 
   const handleDepositAndTrade = async (tradeType: 'fullCoverage' | 'fullRisk' | 'balanced') => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) return;
@@ -97,7 +55,8 @@ const QuickTrade: React.FC = () => {
         // Only proceed if we have meaningful junior tokens (more than 0.001)
         if (juniorBalance > 0.001) {
           const path = [juniorTokenAddress!, seniorTokenAddress!];
-          const balanceString = juniorBalance.toFixed(18);
+          // Use the exact BigInt balance converted to string to avoid precision issues
+          const balanceString = ethers.formatEther(freshJuniorBalance);
           
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
@@ -111,7 +70,8 @@ const QuickTrade: React.FC = () => {
         // Only proceed if we have meaningful senior tokens (more than 0.001)
         if (seniorBalance > 0.001) {
           const path = [seniorTokenAddress!, juniorTokenAddress!];
-          const balanceString = seniorBalance.toFixed(18);
+          // Use the exact BigInt balance converted to string to avoid precision issues
+          const balanceString = ethers.formatEther(freshSeniorBalance);
           
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
@@ -126,6 +86,7 @@ const QuickTrade: React.FC = () => {
       }
       
       setDepositAmount('');
+      await refreshData(); // Refresh UI with new token balances
     } catch (error) {
       console.error('Deposit and trade failed:', error);
       alert('Trade failed. Please try again.');
@@ -194,40 +155,6 @@ const QuickTrade: React.FC = () => {
       setIsExecuting(false);
     }
   };
-  
-  // Update estimated output when amount or intent changes
-  useEffect(() => {
-    const updateEstimate = async () => {
-      if (!amount || parseFloat(amount) <= 0) {
-        setEstimatedOutput('0');
-        return;
-      }
-
-      try {
-        if (intent === 'safety') {
-          // Get estimate for swapping juniorTokens to seniorTokens
-          const path = [juniorTokenAddress!, seniorTokenAddress!];
-          const estimate = await getAmountsOut(amount, path);
-          setEstimatedOutput(estimate);
-        } else if (intent === 'upside') {
-          // Get estimate for swapping seniorTokens to juniorTokens
-          const path = [seniorTokenAddress!, juniorTokenAddress!];
-          const estimate = await getAmountsOut(amount, path);
-          setEstimatedOutput(estimate);
-        }
-      } catch (error) {
-        console.error('Error getting estimate:', error);
-        setEstimatedOutput('0');
-      }
-    };
-
-    if (intent !== 'equalize' && amount && parseFloat(amount) > 0) {
-      updateEstimate();
-      // Update estimate every 3 seconds for real-time pricing
-      const interval = setInterval(updateEstimate, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [amount, intent, seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
 
 
 

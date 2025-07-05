@@ -9,6 +9,7 @@ import React from "react";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Insurance from "./pages/Insurance";
+import Advanced from "./pages/Advanced";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/insurance" element={<Insurance />} />
+          <Route path="/advanced" element={<Advanced />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
