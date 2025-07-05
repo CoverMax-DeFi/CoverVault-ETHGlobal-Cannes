@@ -207,7 +207,7 @@ npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flow-testnet
 ### For Users
 
 1. **Deposit Assets**: Call `depositAsset(asset, amount)` with aUSDC or cUSDT
-2. **Receive Risk Tokens**: Get equal amounts of CM-SENIOR and CM-JUNIOR tokens3. **Trade on 3. **Uniswap**: Buy/sell risk tokens to manage your exposure
+2. **Receive Risk Tokens**: Get equal amounts of CV-SENIOR and CV-JUNIOR tokens3. **Trade on 3. **Uniswap**: Buy/sell risk tokens to manage your exposure
 4. **Monitor Phases**: Track current phase using `getProtocolStatus()`
 5. **Withdraw During Claims**: Use `withdrawSeniorTokens()` during Claims phase
 6. **Final Withdrawal**: Call `withdrawAll()` during Final Claims phase
@@ -240,8 +240,8 @@ npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flow-testnet
 
 ### Flow Testnet
 - **RiskVault**: Successfully deployed (see deployment artifacts)
-- **CM-SENIOR Token**: Auto-deployed by RiskVault
-- **CM-JUNIOR Token**: Auto-deployed by RiskVault
+- **CV-SENIOR Token**: Auto-deployed by RiskVault
+- **CV-JUNIOR Token**: Auto-deployed by RiskVault
 
 ### Development
 - **aUSDC Mock**: Available for testing

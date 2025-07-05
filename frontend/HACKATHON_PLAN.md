@@ -25,7 +25,7 @@
 ## 🎯 Core User Actions (Updated Terminology)
 
 ### Primary Actions:
-1. **"Issue Risk Tokens"** (deposit assets → get CM-SENIOR + CM-JUNIOR)
+1. **"Issue Risk Tokens"** (deposit assets → get CV-SENIOR + CV-JUNIOR)
 2. **"Redeem For Assets"** (burn tokens → get back aUSDC/cUSDT)  
 3. **"Rebalance Risk"** (swap between SENIOR ↔ JUNIOR on Uniswap)
 4. **"Add Liquidity"** (provide liquidity to earn fees)
@@ -105,8 +105,8 @@
 │ Asset: [aUSDC ▼]     Amount: [____] USDC               │
 │                                                         │
 │ You'll receive:                                         │
-│ • 500 CM-SENIOR tokens (priority claims)               │
-│ • 500 CM-JUNIOR tokens (higher upside)                 │
+│ • 500 CV-SENIOR tokens (priority claims)               │
+│ • 500 CV-JUNIOR tokens (higher upside)                 │
 │                                                         │
 │               [Issue Risk Tokens]                       │
 └─────────────────────────────────────────────────────────┘
