@@ -2,15 +2,15 @@
 // DO NOT EDIT MANUALLY - Run 'npm run generate-config' to regenerate
 
 export const CONTRACT_ADDRESSES = {
-  "RiskVault": "0x799DaD27F8038517c1031fCB05dFEdde4721409F",
-  "MockAUSDC": "0x6867ac2479216A57A6bf5B14d2F8Cd292bA47656",
-  "MockCUSDT": "0xA4d800C936C869C3c06D03bd9ff65C5040beDd5D",
-  "SeniorToken": "0x362514449ccB9cbb587FC1781095ED0F9708C63D",
-  "JuniorToken": "0x7aC402C221e5E69d4c5905DfF00bFA0384fe94Df",
-  "UniswapV2Factory": "0x9797491c8be60d745e9F4f01899BB6622e95ADf2",
-  "UniswapV2Router02": "0xc9b58ea574770483605328af4CD2e1339c7c4bAd",
-  "WETH": "0x88a6B75bf7376De9FF3E602f8FF0C160b89D8a3A",
-  "SeniorJuniorPair": "0xAF7aae48ACdD2065f00c2f056f1847EAA9f99D35"
+  "RiskVault": "0xF19Cfc60402Ca5a8C094457C501de35C942FD7bc",
+  "MockAUSDC": "0x0129EC084E8c1407743cca597B7B6d53F5b536F1",
+  "MockCUSDT": "0xb3eafbfB843FEa89830087AE363490DfaB936a80",
+  "SeniorToken": "0x991BF3b03E81e47696591896993FC49eaD61a028",
+  "JuniorToken": "0xF006528e07C9f25bc44915cc59E599D3be820ec9",
+  "UniswapV2Factory": "0x903B1A9aB057b279f6da772522d0e508E2D40a71",
+  "UniswapV2Router02": "0x0ad1167FaEAE7e0E64d3C050fa85e0a0ff53A19f",
+  "WETH": "0xc84F608805B533Fcda1651422d9253DCD054FcCa",
+  "SeniorJuniorPair": "0x0b14441E9A6AF54632f42d0fb9227ce13850A282"
 } as const;
 
 // Chain configuration
@@ -53,6 +53,6 @@ export const PHASE_DURATIONS = {
 export const DEPLOYMENT_INFO = {
   network: "Flow Testnet",
   chainId: 545,
-  deployedAt: 1751703509308,
+  deployedAt: 1751731602070,
   deploymentBlock: "Latest", // Could be extracted from deployment artifacts
 } as const;

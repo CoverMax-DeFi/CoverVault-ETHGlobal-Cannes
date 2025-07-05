@@ -358,6 +358,35 @@ export const RISK_VAULT_ABI = [
         "internalType": "uint256",
         "name": "juniorAmount",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "preferredAsset",
+        "type": "address"
+      }
+    ],
+    "name": "calculateSingleAssetWithdrawal",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "withdrawAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "seniorAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "juniorAmount",
+        "type": "uint256"
       }
     ],
     "name": "calculateWithdrawalAmounts",
@@ -698,29 +727,14 @@ export const RISK_VAULT_ABI = [
         "internalType": "uint256",
         "name": "juniorAmount",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "preferredAsset",
+        "type": "address"
       }
     ],
     "name": "withdraw",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "withdrawAll",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "seniorAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "withdrawSeniorTokens",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
