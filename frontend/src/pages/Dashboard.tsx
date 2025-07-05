@@ -3,6 +3,7 @@ import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Navbar from '@/components/Navbar';
 import PhaseDisplay from '@/components/PhaseDisplay';
 import QuickTrade from '@/components/QuickTrade';
+import Trade from '@/components/Trade';
 import StatCard from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -472,6 +473,10 @@ const Dashboard = () => {
         {/* Quick Trade - Hero Section */}
         <div className="mb-8">
           <QuickTrade />
+        </div>
+
+        <div className="mb-8">
+          <Trade />
         </div>
 
         {/* Secondary Actions */}
