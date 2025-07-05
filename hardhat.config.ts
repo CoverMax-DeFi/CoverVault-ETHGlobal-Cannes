@@ -49,18 +49,65 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 1000000000, // 1 gwei
     },
-    // Add other networks as needed
-    // sepolia: {
-    //   url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-    //   accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    // },
+    // Hedera Testnet
+    hederaTestnet: {
+      url: "https://testnet.hashio.io/api",
+      chainId: 296,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      gasPrice: 2500000000, // 2.5 gwei
+    },
+    // Mantle Sepolia Testnet
+    mantleTestnet: {
+      url: "https://rpc.sepolia.mantle.xyz",
+      chainId: 5003,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      gasPrice: 1000000000, // 1 gwei
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      // Flow networks
+      flowTestnet: "no-api-key-required",
+      flowMainnet: "no-api-key-required",
+      // Hedera networks  
+      hederaTestnet: "no-api-key-required",
+      // Mantle networks
+      mantleTestnet: process.env.MANTLESCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
+      mantle: process.env.MANTLESCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
+      // Other networks
+      mainnet: process.env.ETHERSCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "flowTestnet",
+        chainId: 545,
+        urls: {
+          apiURL: "https://evm-testnet.flowscan.io/api",
+          browserURL: "https://evm-testnet.flowscan.io"
+        }
+      },
+      {
+        network: "hederaTestnet",
+        chainId: 296,
+        urls: {
+          apiURL: "https://server-verify.hashscan.io",
+          browserURL: "https://hashscan.io/testnet"
+        }
+      },
+      {
+        network: "mantleTestnet", 
+        chainId: 5003,
+        urls: {
+          apiURL: "https://api-sepolia.mantlescan.xyz/api",
+          browserURL: "https://sepolia.mantlescan.xyz"
+        }
+      }
+    ]
   },
 };
 
