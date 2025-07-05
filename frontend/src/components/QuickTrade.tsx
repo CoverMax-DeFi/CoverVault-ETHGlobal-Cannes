@@ -222,50 +222,59 @@ const QuickTrade: React.FC = () => {
           <Label className="text-slate-300 mb-3 block">I want to:</Label>
           <RadioGroup value={intent} onValueChange={(value) => setIntent(value as TradeIntent)}>
             <div className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-blue-500 transition-colors">
+              <Label 
+                htmlFor="safety" 
+                className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-blue-500 transition-colors cursor-pointer"
+              >
                 <RadioGroupItem value="safety" id="safety" />
                 <div className="flex items-center space-x-3 flex-1">
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
                     <Shield className="w-4 h-4" />
                   </div>
                   <div>
-                    <Label htmlFor="safety" className="text-white font-medium cursor-pointer">
+                    <span className="text-white font-medium block">
                       Get more safety
-                    </Label>
+                    </span>
                     <p className="text-slate-400 text-xs">Priority claims, lower risk</p>
                   </div>
                 </div>
-              </div>
+              </Label>
 
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-amber-500 transition-colors">
+              <Label 
+                htmlFor="upside" 
+                className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-amber-500 transition-colors cursor-pointer"
+              >
                 <RadioGroupItem value="upside" id="upside" />
                 <div className="flex items-center space-x-3 flex-1">
                   <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center text-white">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                   <div>
-                    <Label htmlFor="upside" className="text-white font-medium cursor-pointer">
+                    <span className="text-white font-medium block">
                       Increase upside
-                    </Label>
+                    </span>
                     <p className="text-slate-400 text-xs">Higher potential, more risk</p>
                   </div>
                 </div>
-              </div>
+              </Label>
 
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-purple-500 transition-colors">
+              <Label 
+                htmlFor="equalize" 
+                className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-purple-500 transition-colors cursor-pointer"
+              >
                 <RadioGroupItem value="equalize" id="equalize" />
                 <div className="flex items-center space-x-3 flex-1">
                   <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white">
                     <Scale className="w-4 h-4" />
                   </div>
                   <div>
-                    <Label htmlFor="equalize" className="text-white font-medium cursor-pointer">
+                    <span className="text-white font-medium block">
                       Equalize risk
-                    </Label>
+                    </span>
                     <p className="text-slate-400 text-xs">Balance SENIOR and JUNIOR tokens</p>
                   </div>
                 </div>
-              </div>
+              </Label>
             </div>
           </RadioGroup>
         </div>
