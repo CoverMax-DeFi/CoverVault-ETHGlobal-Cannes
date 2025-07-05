@@ -1,0 +1,258 @@
+import React, { useState, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { useWeb3 } from '@/context/PrivyWeb3Context';
+import { Shield, TrendingUp, LogOut, Zap } from 'lucide-react';
+import { ethers } from 'ethers';
+
+type TradeIntent = 'safety' | 'upside' | 'exit';
+
+const QuickTrade: React.FC = () => {
+  const { 
+    isConnected, 
+    balances, 
+    depositAsset, 
+    withdraw,
+    // Note: We'll need to add rebalance functions to Web3Context
+  } = useWeb3();
+
+  const [intent, setIntent] = useState<TradeIntent>('safety');
+  const [amount, setAmount] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  // Calculate current token values
+  const seniorValue = Number(balances.seniorTokens) / 1e18;
+  const juniorValue = Number(balances.juniorTokens) / 1e18;
+  const aUSDCValue = Number(balances.aUSDC) / 1e18;
+  const cUSDTValue = Number(balances.cUSDT) / 1e18;
+  const totalAssets = aUSDCValue + cUSDTValue;
+
+  const getIntentDetails = () => {
+    switch (intent) {
+      case 'safety':
+        return {
+          title: 'Get More Safety',
+          description: 'Buy SENIOR tokens for priority claims',
+          icon: <Shield className="w-5 h-5" />,
+          color: 'bg-blue-600',
+          action: 'This will use your assets to get more SENIOR tokens'
+        };
+      case 'upside':
+        return {
+          title: 'Increase Upside',
+          description: 'Buy JUNIOR tokens for higher potential',
+          icon: <TrendingUp className="w-5 h-5" />,
+          color: 'bg-amber-600',
+          action: 'This will use your assets to get more JUNIOR tokens'
+        };
+      case 'exit':
+        return {
+          title: 'Exit Position',
+          description: 'Redeem tokens for underlying assets',
+          icon: <LogOut className="w-5 h-5" />,
+          color: 'bg-slate-600',
+          action: 'This will convert your tokens back to aUSDC/cUSDT'
+        };
+    }
+  };
+
+  const handleExecuteTrade = useCallback(async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    setIsExecuting(true);
+    
+    try {
+      const amountValue = parseFloat(amount);
+      
+      switch (intent) {
+        case 'safety':
+          // For now, deposit assets to get tokens (equal SENIOR + JUNIOR)
+          // TODO: Add rebalancing logic to favor SENIOR
+          if (amountValue > totalAssets) {
+            alert('Insufficient assets');
+            return;
+          }
+          // Use aUSDC if available, otherwise cUSDT
+          const assetToUse = aUSDCValue >= amountValue ? 'aUSDC' : 'cUSDT';
+          await depositAsset(assetToUse, amount);
+          break;
+          
+        case 'upside':
+          // Similar to safety but would favor JUNIOR in rebalancing
+          if (amountValue > totalAssets) {
+            alert('Insufficient assets');
+            return;
+          }
+          const assetToUse2 = aUSDCValue >= amountValue ? 'aUSDC' : 'cUSDT';
+          await depositAsset(assetToUse2, amount);
+          break;
+          
+        case 'exit':
+          // Withdraw proportionally from both token types
+          if (amountValue > (seniorValue + juniorValue)) {
+            alert('Insufficient tokens');
+            return;
+          }
+          const totalTokens = seniorValue + juniorValue;
+          const seniorPortion = (seniorValue / totalTokens) * amountValue;
+          const juniorPortion = (juniorValue / totalTokens) * amountValue;
+          await withdraw(seniorPortion.toString(), juniorPortion.toString());
+          break;
+      }
+      
+      setAmount('');
+    } catch (error) {
+      console.error('Trade execution failed:', error);
+      alert('Trade failed. Please try again.');
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [intent, amount, totalAssets, seniorValue, juniorValue, aUSDCValue, depositAsset, withdraw]);
+
+  const details = getIntentDetails();
+
+  if (!isConnected) {
+    return (
+      <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center">
+            <Zap className="w-5 h-5 mr-2" />
+            Quick Trade
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-slate-400 text-center py-8">
+            Connect your wallet to start trading risk tokens
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-white flex items-center">
+          <Zap className="w-5 h-5 mr-2" />
+          Quick Trade
+        </CardTitle>
+        <p className="text-slate-400 text-sm mt-1">
+          Tell us what you want to do
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Intent Selection */}
+        <div>
+          <Label className="text-slate-300 mb-3 block">I want to:</Label>
+          <RadioGroup value={intent} onValueChange={(value) => setIntent(value as TradeIntent)}>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-blue-500 transition-colors">
+                <RadioGroupItem value="safety" id="safety" />
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <Label htmlFor="safety" className="text-white font-medium cursor-pointer">
+                      Get more safety
+                    </Label>
+                    <p className="text-slate-400 text-xs">Priority claims, lower risk</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-amber-500 transition-colors">
+                <RadioGroupItem value="upside" id="upside" />
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center text-white">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <Label htmlFor="upside" className="text-white font-medium cursor-pointer">
+                      Increase upside
+                    </Label>
+                    <p className="text-slate-400 text-xs">Higher potential, more risk</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors">
+                <RadioGroupItem value="exit" id="exit" />
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center text-white">
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <Label htmlFor="exit" className="text-white font-medium cursor-pointer">
+                      Exit position
+                    </Label>
+                    <p className="text-slate-400 text-xs">Get back to stablecoins</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </RadioGroup>
+        </div>
+
+        {/* Amount Input */}
+        <div>
+          <Label className="text-slate-300 mb-2 block">
+            Amount ({intent === 'exit' ? 'Token Value' : 'USD Value'})
+          </Label>
+          <Input
+            type="number"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="bg-slate-700/50 border-slate-600 text-white text-lg py-6"
+          />
+          <p className="text-slate-400 text-xs mt-1">
+            {intent === 'exit' 
+              ? `Available: $${(seniorValue + juniorValue).toFixed(2)} in tokens`
+              : `Available: $${totalAssets.toFixed(2)} in assets`
+            }
+          </p>
+        </div>
+
+        {/* Trade Preview */}
+        {amount && parseFloat(amount) > 0 && (
+          <div className="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
+            <h4 className="text-white font-medium mb-2">Trade Preview</h4>
+            <p className="text-slate-300 text-sm">
+              {details.action}
+            </p>
+            {intent !== 'exit' && (
+              <p className="text-slate-400 text-xs mt-2">
+                You'll receive ~{amount} SENIOR + ~{amount} JUNIOR tokens
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Execute Button */}
+        <Button 
+          onClick={handleExecuteTrade}
+          disabled={!amount || parseFloat(amount) <= 0 || isExecuting}
+          className={`w-full py-6 text-lg font-medium ${details.color} hover:opacity-90 transition-opacity`}
+        >
+          {isExecuting ? (
+            'Executing...'
+          ) : (
+            <>
+              <div className="mr-2">{details.icon}</div>
+              {details.title}
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default QuickTrade;
