@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Shield, TrendingUp, LogOut, Zap } from 'lucide-react';
 import { ethers } from 'ethers';
+import { CONTRACT_ADDRESSES } from '@/config/contracts';
 
 type TradeIntent = 'safety' | 'upside' | 'exit';
 
@@ -14,14 +15,18 @@ const QuickTrade: React.FC = () => {
   const { 
     isConnected, 
     balances, 
-    depositAsset, 
+    seniorTokenAddress,
+    juniorTokenAddress,
+    swapExactTokensForTokens,
+    getAmountsOut,
+    depositAsset,
     withdraw,
-    // Note: We'll need to add rebalance functions to Web3Context
   } = useWeb3();
 
   const [intent, setIntent] = useState<TradeIntent>('safety');
   const [amount, setAmount] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
+  const [estimatedOutput, setEstimatedOutput] = useState('0');
 
   // Calculate current token values
   const seniorValue = Number(balances.seniorTokens) / 1e18;
@@ -29,24 +34,55 @@ const QuickTrade: React.FC = () => {
   const aUSDCValue = Number(balances.aUSDC) / 1e18;
   const cUSDTValue = Number(balances.cUSDT) / 1e18;
   const totalAssets = aUSDCValue + cUSDTValue;
+  
+  // Update estimated output when amount or intent changes
+  useEffect(() => {
+    const updateEstimate = async () => {
+      if (!amount || parseFloat(amount) <= 0) {
+        setEstimatedOutput('0');
+        return;
+      }
+
+      try {
+        if (intent === 'safety') {
+          // Get estimate for swapping juniorTokens to seniorTokens
+          const path = [juniorTokenAddress!, seniorTokenAddress!];
+          const estimate = await getAmountsOut(amount, path);
+          setEstimatedOutput(estimate);
+        } else if (intent === 'upside') {
+          // Get estimate for swapping seniorTokens to juniorTokens
+          const path = [seniorTokenAddress!, juniorTokenAddress!];
+          const estimate = await getAmountsOut(amount, path);
+          setEstimatedOutput(estimate);
+        }
+      } catch (error) {
+        console.error('Error getting estimate:', error);
+        setEstimatedOutput('0');
+      }
+    };
+
+    if (intent !== 'exit') {
+      updateEstimate();
+    }
+  }, [amount, intent, seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
 
   const getIntentDetails = () => {
     switch (intent) {
       case 'safety':
         return {
           title: 'Get More Safety',
-          description: 'Buy SENIOR tokens for priority claims',
+          description: 'Swap for more SENIOR tokens',
           icon: <Shield className="w-5 h-5" />,
           color: 'bg-blue-600',
-          action: 'This will use your assets to get more SENIOR tokens'
+          action: `You'll get ~${parseFloat(estimatedOutput).toFixed(4)} SENIOR tokens`
         };
       case 'upside':
         return {
           title: 'Increase Upside',
-          description: 'Buy JUNIOR tokens for higher potential',
+          description: 'Swap for more JUNIOR tokens',
           icon: <TrendingUp className="w-5 h-5" />,
           color: 'bg-amber-600',
-          action: 'This will use your assets to get more JUNIOR tokens'
+          action: `You'll get ~${parseFloat(estimatedOutput).toFixed(4)} JUNIOR tokens`
         };
       case 'exit':
         return {
@@ -69,36 +105,41 @@ const QuickTrade: React.FC = () => {
     
     try {
       const amountValue = parseFloat(amount);
+      const minOutput = (parseFloat(estimatedOutput) * 0.95).toString(); // 5% slippage tolerance
       
       switch (intent) {
         case 'safety':
-          // For now, deposit assets to get tokens (equal SENIOR + JUNIOR)
-          // TODO: Add rebalancing logic to favor SENIOR
-          if (amountValue > totalAssets) {
-            alert('Insufficient assets');
+          if (amountValue > juniorValue) {
+            alert('Insufficient JUNIOR tokens');
             return;
           }
-          // Use aUSDC if available, otherwise cUSDT
-          const assetToUse = aUSDCValue >= amountValue ? 'aUSDC' : 'cUSDT';
-          await depositAsset(assetToUse, amount);
+          // Swap JUNIOR to SENIOR
+          await swapExactTokensForTokens(
+            amount,
+            minOutput,
+            [juniorTokenAddress!, seniorTokenAddress!],
+          );
           break;
           
         case 'upside':
-          // Similar to safety but would favor JUNIOR in rebalancing
-          if (amountValue > totalAssets) {
-            alert('Insufficient assets');
+          if (amountValue > seniorValue) {
+            alert('Insufficient SENIOR tokens');
             return;
           }
-          const assetToUse2 = aUSDCValue >= amountValue ? 'aUSDC' : 'cUSDT';
-          await depositAsset(assetToUse2, amount);
+          // Swap SENIOR to JUNIOR
+          await swapExactTokensForTokens(
+            amount,
+            minOutput,
+            [seniorTokenAddress!, juniorTokenAddress!],
+          );
           break;
           
         case 'exit':
-          // Withdraw proportionally from both token types
           if (amountValue > (seniorValue + juniorValue)) {
             alert('Insufficient tokens');
             return;
           }
+          // Withdraw proportionally from both token types
           const totalTokens = seniorValue + juniorValue;
           const seniorPortion = (seniorValue / totalTokens) * amountValue;
           const juniorPortion = (juniorValue / totalTokens) * amountValue;
@@ -113,7 +154,7 @@ const QuickTrade: React.FC = () => {
     } finally {
       setIsExecuting(false);
     }
-  }, [intent, amount, totalAssets, seniorValue, juniorValue, aUSDCValue, depositAsset, withdraw]);
+  }, [intent, amount, estimatedOutput, totalAssets, seniorValue, juniorValue, seniorTokenAddress, juniorTokenAddress, swapExactTokensForTokens, withdraw]);
 
   const details = getIntentDetails();
 
@@ -203,7 +244,9 @@ const QuickTrade: React.FC = () => {
         {/* Amount Input */}
         <div>
           <Label className="text-slate-300 mb-2 block">
-            Amount ({intent === 'exit' ? 'Token Value' : 'USD Value'})
+            {intent === 'safety' ? 'JUNIOR Amount' : 
+             intent === 'upside' ? 'SENIOR Amount' :
+             'Total Token Value'}
           </Label>
           <Input
             type="number"
@@ -213,9 +256,11 @@ const QuickTrade: React.FC = () => {
             className="bg-slate-700/50 border-slate-600 text-white text-lg py-6"
           />
           <p className="text-slate-400 text-xs mt-1">
-            {intent === 'exit' 
-              ? `Available: $${(seniorValue + juniorValue).toFixed(2)} in tokens`
-              : `Available: $${totalAssets.toFixed(2)} in assets`
+            {intent === 'safety' 
+              ? `Available: ${juniorValue.toFixed(4)} JUNIOR tokens`
+              : intent === 'upside'
+              ? `Available: ${seniorValue.toFixed(4)} SENIOR tokens`
+              : `Available: ${(seniorValue + juniorValue).toFixed(4)} total tokens`
             }
           </p>
         </div>
@@ -227,11 +272,6 @@ const QuickTrade: React.FC = () => {
             <p className="text-slate-300 text-sm">
               {details.action}
             </p>
-            {intent !== 'exit' && (
-              <p className="text-slate-400 text-xs mt-2">
-                You'll receive ~{amount} SENIOR + ~{amount} JUNIOR tokens
-              </p>
-            )}
           </div>
         )}
 

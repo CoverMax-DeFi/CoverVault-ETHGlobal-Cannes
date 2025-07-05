@@ -3,7 +3,13 @@ import { PrivyProvider, usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers, BrowserProvider, Contract, Signer } from 'ethers';
 import { toast } from '@/components/ui/sonner';
 import { CONTRACT_ADDRESSES, CHAIN_CONFIG, Phase, PHASE_NAMES } from '@/config/contracts';
-import { RISK_VAULT_ABI, RISK_TOKEN_ABI, ERC20_ABI } from '@/config/abis';
+import {
+  RISK_VAULT_ABI,
+  RISK_TOKEN_ABI,
+  ERC20_ABI,
+  UNISWAP_V2_ROUTER_ABI,
+  UNISWAP_V2_PAIR_ABI
+} from '@/config/abis';
 
 interface TokenBalances {
   seniorTokens: bigint;
@@ -63,6 +69,29 @@ interface Web3ContextType {
   refreshData: () => Promise<void>;
   approveToken: (tokenAddress: string, amount: string) => Promise<void>;
   calculateWithdrawalAmounts: (seniorAmount: string, juniorAmount: string) => Promise<{ aUSDC: bigint; cUSDT: bigint }>;
+  
+  // Uniswap functions
+  swapExactTokensForTokens: (
+    amountIn: string,
+    amountOutMin: string,
+    path: string[],
+  ) => Promise<void>;
+  
+  getAmountsOut: (
+    amountIn: string,
+    path: string[],
+  ) => Promise<string>;
+
+  addLiquidity: (
+    tokenAAmount: string,
+    tokenBAmount: string,
+    tokenA: string,
+    tokenB: string,
+  ) => Promise<void>;
+
+  getPairReserves: (
+    pairAddress: string
+  ) => Promise<{ reserve0: bigint; reserve1: bigint }>;
 }
 
 const Web3Context = createContext<Web3ContextType>({
@@ -102,6 +131,10 @@ const Web3Context = createContext<Web3ContextType>({
   refreshData: async () => {},
   approveToken: async () => {},
   calculateWithdrawalAmounts: async () => ({ aUSDC: 0n, cUSDT: 0n }),
+  swapExactTokensForTokens: async () => {},
+  getAmountsOut: async () => "0",
+  addLiquidity: async () => {},
+  getPairReserves: async () => ({ reserve0: 0n, reserve1: 0n }),
 });
 
 // Inner provider that uses Privy hooks
@@ -562,6 +595,130 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
     refreshData,
     approveToken,
     calculateWithdrawalAmounts,
+    swapExactTokensForTokens: async (amountIn: string, amountOutMin: string, path: string[]) => {
+      if (!signer || !address) {
+        toast.error('Please connect your wallet');
+        return;
+      }
+  
+      try {
+        const amountInWei = ethers.parseEther(amountIn);
+        const amountOutMinWei = ethers.parseEther(amountOutMin);
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+  
+        // Approve token spending if needed
+        const inputToken = new Contract(path[0], ERC20_ABI, signer);
+        const allowance = await inputToken.allowance(address, CONTRACT_ADDRESSES.UniswapV2Router02);
+        
+        if (allowance < amountInWei) {
+          const approveTx = await inputToken.approve(CONTRACT_ADDRESSES.UniswapV2Router02, amountInWei);
+          toast.info('Approving token...');
+          await approveTx.wait();
+        }
+  
+        // Execute swap
+        const router = new Contract(CONTRACT_ADDRESSES.UniswapV2Router02, UNISWAP_V2_ROUTER_ABI, signer);
+        const tx = await router.swapExactTokensForTokens(
+          amountInWei,
+          amountOutMinWei,
+          path,
+          address,
+          deadline,
+        );
+  
+        toast.info('Executing swap...');
+        await tx.wait();
+        toast.success('Swap completed');
+        
+        await refreshData();
+      } catch (error: any) {
+        console.error('Swap failed:', error);
+        toast.error(error.reason || 'Swap failed');
+      }
+    },
+  
+    getAmountsOut: async (amountIn: string, path: string[]): Promise<string> => {
+      if (!provider) return "0";
+  
+      try {
+        const router = new Contract(CONTRACT_ADDRESSES.UniswapV2Router02, UNISWAP_V2_ROUTER_ABI, provider);
+        const amountInWei = ethers.parseEther(amountIn);
+        const amounts = await router.getAmountsOut(amountInWei, path);
+        return ethers.formatEther(amounts[amounts.length - 1]);
+      } catch (error) {
+        console.error('Error getting amounts out:', error);
+        return "0";
+      }
+    },
+  
+    addLiquidity: async (tokenAAmount: string, tokenBAmount: string, tokenA: string, tokenB: string) => {
+      if (!signer || !address) {
+        toast.error('Please connect your wallet');
+        return;
+      }
+  
+      try {
+        const amountADesired = ethers.parseEther(tokenAAmount);
+        const amountBDesired = ethers.parseEther(tokenBAmount);
+        const amountAMin = amountADesired * 95n / 100n; // 5% slippage
+        const amountBMin = amountBDesired * 95n / 100n; // 5% slippage
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+  
+        // Approve both tokens
+        const tokenAContract = new Contract(tokenA, ERC20_ABI, signer);
+        const tokenBContract = new Contract(tokenB, ERC20_ABI, signer);
+  
+        const allowanceA = await tokenAContract.allowance(address, CONTRACT_ADDRESSES.UniswapV2Router02);
+        const allowanceB = await tokenBContract.allowance(address, CONTRACT_ADDRESSES.UniswapV2Router02);
+  
+        if (allowanceA < amountADesired) {
+          const approveTx = await tokenAContract.approve(CONTRACT_ADDRESSES.UniswapV2Router02, amountADesired);
+          toast.info(`Approving ${await tokenAContract.symbol()}...`);
+          await approveTx.wait();
+        }
+  
+        if (allowanceB < amountBDesired) {
+          const approveTx = await tokenBContract.approve(CONTRACT_ADDRESSES.UniswapV2Router02, amountBDesired);
+          toast.info(`Approving ${await tokenBContract.symbol()}...`);
+          await approveTx.wait();
+        }
+  
+        // Add liquidity
+        const router = new Contract(CONTRACT_ADDRESSES.UniswapV2Router02, UNISWAP_V2_ROUTER_ABI, signer);
+        const tx = await router.addLiquidity(
+          tokenA,
+          tokenB,
+          amountADesired,
+          amountBDesired,
+          amountAMin,
+          amountBMin,
+          address,
+          deadline,
+        );
+  
+        toast.info('Adding liquidity...');
+        await tx.wait();
+        toast.success('Liquidity added');
+        
+        await refreshData();
+      } catch (error: any) {
+        console.error('Failed to add liquidity:', error);
+        toast.error(error.reason || 'Failed to add liquidity');
+      }
+    },
+  
+    getPairReserves: async (pairAddress: string) => {
+      if (!provider) return { reserve0: 0n, reserve1: 0n };
+  
+      try {
+        const pair = new Contract(pairAddress, UNISWAP_V2_PAIR_ABI, provider);
+        const [reserve0, reserve1] = await pair.getReserves();
+        return { reserve0, reserve1 };
+      } catch (error) {
+        console.error('Error getting pair reserves:', error);
+        return { reserve0: 0n, reserve1: 0n };
+      }
+    },
   };
 
   return (
