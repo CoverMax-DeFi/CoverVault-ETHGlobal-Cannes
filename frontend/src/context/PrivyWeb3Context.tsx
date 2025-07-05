@@ -399,9 +399,9 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
       // Get the preferred asset address
       let preferredAssetAddress = ethers.ZeroAddress; // Default to proportional
       if (preferredAsset === 'aUSDC') {
-        preferredAssetAddress = CONTRACT_ADDRESSES.aUSDC;
+        preferredAssetAddress = CONTRACT_ADDRESSES.MockAUSDC;
       } else if (preferredAsset === 'cUSDT') {
-        preferredAssetAddress = CONTRACT_ADDRESSES.cUSDT;
+        preferredAssetAddress = CONTRACT_ADDRESSES.MockCUSDT;
       }
       
       const tx = await vaultContract.withdraw(
