@@ -42,13 +42,6 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 1000000000, // 1 gwei
     },
-    // Flow EVM Mainnet (for future use)
-    flowMainnet: {
-      url: "https://mainnet.evm.nodes.onflow.org",
-      chainId: 747,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 1000000000, // 1 gwei
-    },
     // Hedera Testnet
     hederaTestnet: {
       url: "https://testnet.hashio.io/api",
@@ -72,7 +65,6 @@ const config: HardhatUserConfig = {
     apiKey: {
       // Flow networks
       flowTestnet: "no-api-key-required",
-      flowMainnet: "no-api-key-required",
       // Hedera networks  
       hederaTestnet: "no-api-key-required",
       // Mantle networks

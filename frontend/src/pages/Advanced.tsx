@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, Minus, Activity, Settings, BarChart3 } from 'lucide-react';
-import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
+import { Phase, ContractName, getContractAddress, SupportedChainId } from '@/config/contracts';
 import { ethers } from 'ethers';
 
 const Advanced = () => {
@@ -28,6 +28,8 @@ const Advanced = () => {
     addLiquidity,
     removeLiquidity,
     getPairReserves,
+    currentChain,
+    isUnsupportedChain,
   } = useWeb3();
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -62,12 +64,13 @@ const Advanced = () => {
   // Fetch token prices and pool reserves from Uniswap pair
   useEffect(() => {
     const fetchTokenPrices = async () => {
-      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut) return;
+      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut || !currentChain) return;
       
       setPricesLoading(true);
       try {
         // Get pool reserves to calculate proper AMM pricing
-        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        const pairAddress = getContractAddress(currentChain, ContractName.SENIOR_JUNIOR_PAIR);
+        const reserves = await getPairReserves(pairAddress);
         const seniorReserve = parseFloat(ethers.formatEther(reserves.reserve0));
         const juniorReserve = parseFloat(ethers.formatEther(reserves.reserve1));
         
@@ -106,10 +109,11 @@ const Advanced = () => {
     };
 
     const fetchPoolReserves = async () => {
-      if (!getPairReserves) return;
+      if (!getPairReserves || !currentChain) return;
       
       try {
-        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        const pairAddress = getContractAddress(currentChain, ContractName.SENIOR_JUNIOR_PAIR);
+        const reserves = await getPairReserves(pairAddress);
         
         // Format reserves from wei to ether
         const seniorReserve = ethers.formatEther(reserves.reserve0);
@@ -144,7 +148,7 @@ const Advanced = () => {
     }, 30000); // Update every 30 seconds to reduce twitching
     
     return () => clearInterval(interval);
-  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves]);
+  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves, currentChain]);
 
 
   // Calculate optimal token amounts when user selects asset and amount

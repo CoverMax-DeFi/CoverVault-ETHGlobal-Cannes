@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Shield, TrendingUp, Scale, Zap, DollarSign, AlertCircle } from 'lucide-react';
-import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
+import { Phase, ContractName, getContractAddress, SupportedChainId } from '@/config/contracts';
 import SmartLiquiditySuggestion from './SmartLiquiditySuggestion';
 import { ethers } from 'ethers';
 
@@ -26,6 +26,8 @@ const QuickTrade: React.FC = () => {
     refreshData,
     getPairReserves,
     getTokenBalance,
+    currentChain,
+    isUnsupportedChain,
   } = useWeb3();
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -153,7 +155,12 @@ const QuickTrade: React.FC = () => {
       const juniorBalance = Number(balances.juniorTokens) / 1e18;
       
       // Get current pool reserves from the Uniswap pair
-      const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+      if (!currentChain) {
+        throw new Error('No chain selected');
+      }
+      
+      const pairAddress = getContractAddress(currentChain, ContractName.SENIOR_JUNIOR_PAIR);
+      const reserves = await getPairReserves(pairAddress);
       const seniorReserve = Number(reserves.reserve0) / 1e18;  // reserve0 is senior
       const juniorReserve = Number(reserves.reserve1) / 1e18;  // reserve1 is junior
       

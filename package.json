@@ -9,7 +9,6 @@
     "deploy": "npx hardhat ignition deploy ignition/modules/RiskToken.ts",
     "deploy:localhost": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network localhost",
     "deploy:flow-testnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowTestnet && npm run generate-config",
-    "deploy:flow-mainnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowMainnet && npm run generate-config",
     "deploy:hedera-testnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network hederaTestnet && npm run generate-config",
     "deploy:mantle-testnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network mantleTestnet && npm run generate-config",
     "generate-config": "node scripts/generate-frontend-config.js",

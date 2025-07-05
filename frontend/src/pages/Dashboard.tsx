@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DollarSign, Coins, Shield, AlertCircle, RefreshCw, Activity, ArrowRight, Droplets } from 'lucide-react';
-import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
+import { Phase, ContractName, getContractAddress, SupportedChainId } from '@/config/contracts';
 import { ethers } from 'ethers';
 
 const Dashboard = () => {
@@ -21,6 +21,8 @@ const Dashboard = () => {
     seniorTokenAddress,
     juniorTokenAddress,
     getPairReserves,
+    currentChain,
+    isUnsupportedChain,
   } = useWeb3();
 
   const [seniorPrice, setSeniorPrice] = useState('0.98');
@@ -38,12 +40,13 @@ const Dashboard = () => {
   // Fetch token prices and pool reserves from Uniswap pair
   useEffect(() => {
     const fetchTokenPrices = async () => {
-      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut) return;
+      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut || !currentChain) return;
       
       setPricesLoading(true);
       try {
         // Get pool reserves to calculate proper AMM pricing
-        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        const pairAddress = getContractAddress(currentChain, ContractName.SENIOR_JUNIOR_PAIR);
+        const reserves = await getPairReserves(pairAddress);
         const seniorReserve = parseFloat(ethers.formatEther(reserves.reserve0));
         const juniorReserve = parseFloat(ethers.formatEther(reserves.reserve1));
         
@@ -82,10 +85,11 @@ const Dashboard = () => {
     };
 
     const fetchPoolReserves = async () => {
-      if (!getPairReserves) return;
+      if (!getPairReserves || !currentChain) return;
       
       try {
-        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        const pairAddress = getContractAddress(currentChain, ContractName.SENIOR_JUNIOR_PAIR);
+        const reserves = await getPairReserves(pairAddress);
         
         // Format reserves from wei to ether
         const seniorReserve = ethers.formatEther(reserves.reserve0);
@@ -120,7 +124,7 @@ const Dashboard = () => {
     }, 30000); // Update every 30 seconds to reduce twitching
     
     return () => clearInterval(interval);
-  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves]);
+  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves, currentChain]);
 
   // Calculate total portfolio value based on risk token holdings and current market prices
   const seniorTokenAmount = parseFloat(formatTokenAmount(balances.seniorTokens));
