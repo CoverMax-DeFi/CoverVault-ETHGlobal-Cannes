@@ -178,19 +178,6 @@ const QuickTrade: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Smart Risk Trading Hub Header */}
-      <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-white flex items-center justify-center text-2xl">
-            <Zap className="w-8 h-8 mr-3 text-blue-400" />
-            Smart Risk Trading Hub
-          </CardTitle>
-          <p className="text-slate-300 text-lg">
-            One-click deposit + trading • MAX buttons • Smart liquidity
-          </p>
-        </CardHeader>
-      </Card>
-
       {/* Unified Trading Hub */}
       <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
         <CardHeader>

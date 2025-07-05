@@ -268,63 +268,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Portfolio Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Portfolio Value"
-            value={`$${totalPortfolioValue.toFixed(2)}`}
-            icon={<DollarSign className="h-5 w-5" />}
-            description={`${seniorTokenAmount.toFixed(2)} SENIOR + ${juniorTokenAmount.toFixed(2)} JUNIOR`}
-            className="transition-all duration-300"
-          />
-          <StatCard
-            title="SENIOR Price"
-            value={`$${seniorPrice}`}
-            icon={<Shield className="h-5 w-5" />}
-            description="Priority claims token"
-            className="transition-all duration-300"
-          />
-          <StatCard
-            title="JUNIOR Price"
-            value={`$${juniorPrice}`}
-            icon={<Coins className="h-5 w-5" />}
-            description="Higher yield token"
-            className="transition-all duration-300"
-          />
-          <StatCard
-            title="Pool Liquidity"
-            value={poolReserves.senior === '0' && poolReserves.junior === '0' ? 'Loading...' : `$${((parseFloat(poolReserves.senior)) + (parseFloat(poolReserves.junior))).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
-            icon={<Activity className="h-5 w-5" />}
-            description={`${(parseFloat(poolReserves.senior) / 1000).toFixed(3)}K SENIOR / ${(parseFloat(poolReserves.junior) / 1000).toFixed(3)}K JUNIOR`}
-            className="transition-all duration-300"
-          />
-        </div>
-
         {/* Quick Trade - Hero Section */}
         <div className="mb-8">
           <QuickTrade />
-        </div>
-
-        {/* Quick Access to Advanced Features */}
-        <div className="mb-8">
-          <Card className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-purple-500/30 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold text-white mb-2">Need More Control?</h3>
-                  <p className="text-slate-300">
-                    Access manual trading, liquidity management, and advanced protocol operations
-                  </p>
-                </div>
-                <Button asChild className="bg-purple-600 hover:bg-purple-700">
-                  <Link to="/advanced">
-                    Go to Advanced Trading
-                    <ArrowRight className="ml-2 w-4 h-4" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
