@@ -489,6 +489,13 @@ export const RISK_VAULT_ABI = [
   },
   {
     "inputs": [],
+    "name": "forcePhaseTransitionImmediate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getPhaseInfo",
     "outputs": [
       {

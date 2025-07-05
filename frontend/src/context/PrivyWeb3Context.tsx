@@ -81,6 +81,7 @@ interface Web3ContextType {
   // Admin functions
   toggleEmergencyMode: () => Promise<void>;
   forcePhaseTransition: () => Promise<void>;
+  forcePhaseTransitionImmediate: () => Promise<void>;
   startNewCycle: () => Promise<void>;
   
   // Utility functions
@@ -826,6 +827,32 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const forcePhaseTransitionImmediate = async () => {
+    if (!signer) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    try {
+      const vaultAddress = getCurrentChainAddress(ContractName.RISK_VAULT);
+      if (!vaultAddress) {
+        toast.error('Risk vault not available on this network');
+        return;
+      }
+
+      const vaultContract = new Contract(vaultAddress, RISK_VAULT_ABI, signer);
+      const tx = await vaultContract.forcePhaseTransitionImmediate();
+      toast.info('Forcing immediate phase transition...');
+      await tx.wait();
+      toast.success('Phase transition forced immediately');
+      
+      await refreshData();
+    } catch (error: any) {
+      console.error('Error forcing immediate phase transition:', error);
+      toast.error('Failed to force immediate phase transition - admin access required');
+    }
+  };
+
   const startNewCycle = async () => {
     if (!signer) {
       toast.error('Please connect your wallet');
@@ -1168,6 +1195,7 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
     emergencyWithdraw,
     toggleEmergencyMode,
     forcePhaseTransition,
+    forcePhaseTransitionImmediate,
     startNewCycle,
     refreshData,
     approveToken,

@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +14,7 @@ const Admin = () => {
     vaultInfo,
     toggleEmergencyMode,
     forcePhaseTransition,
+    forcePhaseTransitionImmediate,
     startNewCycle,
     refreshData,
     seniorTokenAddress,
@@ -168,7 +168,16 @@ const Admin = () => {
                   className="w-full bg-slate-700 hover:bg-slate-600 text-white border-slate-600 hover:border-slate-500"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Force Phase Transition
+                  Force Phase Transition (Time Check)
+                </Button>
+                
+                <Button
+                  onClick={forcePhaseTransitionImmediate}
+                  variant="outline"
+                  className="w-full bg-orange-700 hover:bg-orange-600 text-white border-orange-600 hover:border-orange-500"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Force Phase Transition (Immediate)
                 </Button>
 
                 {vaultInfo.currentPhase === Phase.FINAL_CLAIMS && (

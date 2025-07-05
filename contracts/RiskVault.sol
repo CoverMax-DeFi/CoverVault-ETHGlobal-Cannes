@@ -148,6 +148,28 @@ contract RiskVault is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Immediately force next phase transition regardless of time (owner only for testing/emergency)
+     */
+    function forcePhaseTransitionImmediate() external onlyOwner {
+        Phase oldPhase = currentPhase;
+        
+        if (currentPhase == Phase.DEPOSIT) {
+            currentPhase = Phase.COVERAGE;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        } else if (currentPhase == Phase.COVERAGE) {
+            currentPhase = Phase.CLAIMS;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        } else if (currentPhase == Phase.CLAIMS) {
+            currentPhase = Phase.FINAL_CLAIMS;
+            phaseStartTime = block.timestamp;
+            emit PhaseTransitioned(uint8(oldPhase), uint8(currentPhase), block.timestamp);
+        }
+        // Note: FINAL_CLAIMS requires startNewCycle() to reset to DEPOSIT
+    }
+
+    /**
      * @dev Start a new cycle - resets to DEPOSIT phase
      */
     function startNewCycle() external onlyOwner {
