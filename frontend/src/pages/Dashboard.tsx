@@ -245,10 +245,10 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">
-                Risk Trading Hub
+                Trading Dashboard
               </h1>
               <p className="text-slate-300">
-                Trade risk tokens with intent-based actions
+                Complete hub for trading, liquidity, and portfolio management
               </p>
             </div>
             <div className="flex items-center text-slate-400 text-sm">
@@ -491,114 +491,8 @@ const Dashboard = () => {
               </Button>
             </CardContent>
           </Card>
-          </div>
-        </div>
 
-        {/* Advanced Trading Features */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Advanced Trading</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Rebalance Risk */}
-            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <ArrowUpDown className="w-5 h-5 mr-2" />
-                  Rebalance Risk
-                </CardTitle>
-                <CardDescription className="text-slate-300">
-                  Swap between SENIOR and JUNIOR tokens
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">From</Label>
-                    <Select value={rebalanceFrom} onValueChange={(value) => setRebalanceFrom(value as 'senior' | 'junior')}>
-                      <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="senior">
-                          <div className="flex items-center">
-                            <Shield className="w-4 h-4 mr-2" />
-                            SENIOR
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="junior">
-                          <div className="flex items-center">
-                            <TrendingUp className="w-4 h-4 mr-2" />
-                            JUNIOR
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">To</Label>
-                    <Select value={rebalanceTo} onValueChange={(value) => setRebalanceTo(value as 'senior' | 'junior')}>
-                      <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="senior">
-                          <div className="flex items-center">
-                            <Shield className="w-4 h-4 mr-2" />
-                            SENIOR
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="junior">
-                          <div className="flex items-center">
-                            <TrendingUp className="w-4 h-4 mr-2" />
-                            JUNIOR
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Amount</Label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={rebalanceAmount}
-                    onChange={(e) => setRebalanceAmount(e.target.value)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                  />
-                  <p className="text-sm text-slate-400">
-                    Available: {getRebalanceBalance().toFixed(4)} {rebalanceFrom.toUpperCase()} tokens
-                  </p>
-                </div>
-
-                {rebalanceAmount && parseFloat(rebalanceAmount) > 0 && rebalanceFrom !== rebalanceTo && (
-                  <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      You'll receive: ~{parseFloat(rebalanceEstimate).toFixed(4)} {rebalanceTo.toUpperCase()} tokens
-                      <br />
-                      <span className="text-xs text-slate-400">
-                        Exchange rate: 1 {rebalanceFrom.toUpperCase()} = {rebalanceAmount ? (parseFloat(rebalanceEstimate) / parseFloat(rebalanceAmount)).toFixed(4) : '0'} {rebalanceTo.toUpperCase()}
-                      </span>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Button
-                  onClick={handleRebalanceRisk}
-                  disabled={!isConnected || !rebalanceAmount || parseFloat(rebalanceAmount) <= 0 || rebalanceFrom === rebalanceTo}
-                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-                >
-                  Rebalance Risk
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Remove Liquidity */}
+                      {/* Remove Liquidity */}
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white flex items-center">
@@ -646,8 +540,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Your Positions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Portfolio Overview */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-white">Your Portfolio</h2>
+            <div className="text-sm text-slate-400">Current positions and protocol status</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-white">Your Positions</CardTitle>
@@ -737,6 +636,7 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Emergency Withdrawal */}
