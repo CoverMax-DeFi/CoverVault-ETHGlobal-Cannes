@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, ArrowUpDown, TrendingUp, Minus, Activity, Settings, BarChart3 } from 'lucide-react';
 import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
@@ -393,17 +392,35 @@ const Advanced = () => {
                 ) : (
                   <>
                     <div>
-                      <Label className="text-slate-300">Select Asset</Label>
-                      <RadioGroup value={depositAssetType} onValueChange={(v) => setDepositAssetType(v as 'aUSDC' | 'cUSDT')}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="aUSDC" id="aUSDC" />
-                          <Label htmlFor="aUSDC" className="text-slate-300">aUSDC (Balance: {formatTokenAmount(balances.aUSDC)})</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="cUSDT" id="cUSDT" />
-                          <Label htmlFor="cUSDT" className="text-slate-300">cUSDT (Balance: {formatTokenAmount(balances.cUSDT)})</Label>
-                        </div>
-                      </RadioGroup>
+                      <Label className="text-slate-300 mb-3 block">Select Asset</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setDepositAssetType('aUSDC')}
+                          className={`p-3 rounded-lg border transition-all ${
+                            depositAssetType === 'aUSDC'
+                              ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                              : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-semibold">aUSDC</div>
+                            <div className="text-sm opacity-80">Balance: {formatTokenAmount(balances.aUSDC)}</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => setDepositAssetType('cUSDT')}
+                          className={`p-3 rounded-lg border transition-all ${
+                            depositAssetType === 'cUSDT'
+                              ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                              : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-semibold">cUSDT</div>
+                            <div className="text-sm opacity-80">Balance: {formatTokenAmount(balances.cUSDT)}</div>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="deposit-amount" className="text-slate-300">Amount</Label>
@@ -658,17 +675,35 @@ const Advanced = () => {
                       />
                     </div>
                     <div>
-                      <Label className="text-slate-300">Preferred Asset</Label>
-                      <RadioGroup value={preferredAsset} onValueChange={(v) => setPreferredAsset(v as 'aUSDC' | 'cUSDT')}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="aUSDC" id="em-aUSDC" />
-                          <Label htmlFor="em-aUSDC" className="text-slate-300">aUSDC</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="cUSDT" id="em-cUSDT" />
-                          <Label htmlFor="em-cUSDT" className="text-slate-300">cUSDT</Label>
-                        </div>
-                      </RadioGroup>
+                      <Label className="text-slate-300 mb-3 block">Preferred Asset</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => setPreferredAsset('aUSDC')}
+                          className={`p-3 rounded-lg border transition-all ${
+                            preferredAsset === 'aUSDC'
+                              ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                              : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-semibold">aUSDC</div>
+                            <div className="text-sm opacity-80">Aave USDC</div>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => setPreferredAsset('cUSDT')}
+                          className={`p-3 rounded-lg border transition-all ${
+                            preferredAsset === 'cUSDT'
+                              ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                              : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          <div className="text-center">
+                            <div className="font-semibold">cUSDT</div>
+                            <div className="text-sm opacity-80">Compound USDT</div>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <Button 
