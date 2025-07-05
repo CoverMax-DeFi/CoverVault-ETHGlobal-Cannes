@@ -46,7 +46,6 @@ const Dashboard = () => {
   
   // Pool reserves state
   const [poolReserves, setPoolReserves] = useState({ senior: '0', junior: '0' });
-  const [poolLoading, setPoolLoading] = useState(false);
   
   // Liquidity management state
   const [liquiditySeniorAmount, setLiquiditySeniorAmount] = useState('');
@@ -102,24 +101,35 @@ const Dashboard = () => {
       
       setPricesLoading(true);
       try {
-        // Get exchange rates between SENIOR and JUNIOR tokens
-        const seniorToJunior = await getAmountsOut('1', [seniorTokenAddress, juniorTokenAddress]);
+        // Get pool reserves to calculate proper AMM pricing
+        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        const seniorReserve = parseFloat(ethers.formatEther(reserves.reserve0));
+        const juniorReserve = parseFloat(ethers.formatEther(reserves.reserve1));
         
-        // Both tokens combined are always redeemable for $2 worth of stablecoins
-        // The price depends on the pool ratio: price = pool_ratio * $1
-        // If 1 SENIOR = 0.8 JUNIOR, then SENIOR = $0.80 and JUNIOR = $1.25 (total still $2.05 ≈ $2)
+        // Calculate prices directly from Uniswap AMM reserves
+        // In a Uniswap pair, price = other_reserve / this_reserve
+        const seniorPriceInJunior = juniorReserve / seniorReserve;
+        const juniorPriceInSenior = seniorReserve / juniorReserve;
         
-        const seniorToJuniorRate = parseFloat(seniorToJunior);
-        // juniorToSeniorRate not used in current pricing calculation
-        
-        // Calculate prices based on pool ratios
-        // The sum should approximately equal $2 (since both are redeemable 1:1 with stablecoins)
-        const totalRatio = seniorToJuniorRate + 1; // 1 SENIOR + equivalent JUNIOR
-        const seniorPriceNum = (2 / totalRatio);
-        const juniorPriceNum = (2 / totalRatio) * seniorToJuniorRate;
-        
-        setSeniorPrice(seniorPriceNum.toFixed(2));
-        setJuniorPrice(juniorPriceNum.toFixed(2));
+        // For USD pricing, we need to establish a base.
+        // Let's use getAmountsOut to get actual market prices
+        try {
+          // Get price of 1 SENIOR in terms of JUNIOR
+          const seniorToJuniorPath = [seniorTokenAddress, juniorTokenAddress];
+          const seniorPrice1Unit = await getAmountsOut('1', seniorToJuniorPath);
+          
+          // Get price of 1 JUNIOR in terms of SENIOR
+          const juniorToSeniorPath = [juniorTokenAddress, seniorTokenAddress];
+          const juniorPrice1Unit = await getAmountsOut('1', juniorToSeniorPath);
+          
+          setSeniorPrice(parseFloat(seniorPrice1Unit).toFixed(2));
+          setJuniorPrice(parseFloat(juniorPrice1Unit).toFixed(2));
+        } catch (error) {
+          console.error('Error getting AMM prices:', error);
+          // Fallback to reserve-based calculation
+          setSeniorPrice(seniorPriceInJunior.toFixed(2));
+          setJuniorPrice(juniorPriceInSenior.toFixed(2));
+        }
       } catch (error) {
         console.error('Error fetching token prices:', error);
         // Keep default prices on error (equal weighting)
@@ -338,9 +348,9 @@ const Dashboard = () => {
           />
           <StatCard
             title="Pool Liquidity"
-            value={poolReserves.senior === '0' && poolReserves.junior === '0' ? 'Loading...' : `${parseFloat(poolReserves.senior).toFixed(2)} / ${parseFloat(poolReserves.junior).toFixed(2)}`}
+            value={poolReserves.senior === '0' && poolReserves.junior === '0' ? 'Loading...' : `$${((parseFloat(poolReserves.senior)) + (parseFloat(poolReserves.junior))).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
             icon={<Activity className="h-5 w-5" />}
-            description="SENIOR / JUNIOR in pool"
+            description={`${(parseFloat(poolReserves.senior) / 1000).toFixed(3)}K SENIOR / ${(parseFloat(poolReserves.junior) / 1000).toFixed(3)}K JUNIOR`}
             className="transition-all duration-300"
           />
         </div>
@@ -402,7 +412,7 @@ const Dashboard = () => {
                   <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      You will receive {depositAmount || '0'} CM-SENIOR and {depositAmount || '0'} CM-JUNIOR tokens
+                      You will receive {depositAmount ? (parseFloat(depositAmount) / 2) : '0'} CM-SENIOR and {depositAmount ? (parseFloat(depositAmount) / 2) : '0'} CM-JUNIOR tokens
                     </AlertDescription>
                   </Alert>
                   <Button 
