@@ -3,6 +3,7 @@ import Logo from '@/assets/images/CoverVault.svg';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
+import NetworkSelector from '@/components/NetworkSelector';
 
 const Navbar: React.FC = () => {
   const location = useLocation();
@@ -51,6 +52,9 @@ const Navbar: React.FC = () => {
               <Link to="/admin">Admin</Link>
             </Button>
           </div>
+
+          {/* Network Selector */}
+          <NetworkSelector />
 
           {/* Connect Wallet Button */}
           {!isConnected ? (
