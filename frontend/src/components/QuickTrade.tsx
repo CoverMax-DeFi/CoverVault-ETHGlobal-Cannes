@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
-import { Shield, TrendingUp, Scale, Zap, DollarSign, Droplets, AlertCircle } from 'lucide-react';
+import { Shield, TrendingUp, Scale, Zap, DollarSign, AlertCircle } from 'lucide-react';
 import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
-import { Contract } from 'ethers';
+import SmartLiquiditySuggestion from './SmartLiquiditySuggestion';
 
 type TradeIntent = 'safety' | 'upside' | 'equalize' | 'fullCoverage' | 'fullRisk' | 'balanced' | 'maxSafety' | 'maxUpside' | 'addLiquidity';
 
@@ -92,52 +92,39 @@ const QuickTrade: React.FC = () => {
       if (tradeType === 'fullCoverage') {
         // Get fresh junior token balance directly from blockchain
         const freshJuniorBalance = await getTokenBalance(juniorTokenAddress!);
-        const juniorBalanceWei = Number(freshJuniorBalance);
-        const juniorBalance = juniorBalanceWei / 1e18;
-        
-        console.log('Fresh junior balance from blockchain:', juniorBalance);
-        console.log('Raw fresh junior token balance:', freshJuniorBalance);
-        console.log('Stale state balance was:', Number(balances.juniorTokens) / 1e18);
+        const juniorBalance = Number(freshJuniorBalance) / 1e18;
         
         // Only proceed if we have meaningful junior tokens (more than 0.001)
         if (juniorBalance > 0.001) {
-          console.log('Proceeding with swap, balance is:', juniorBalance, 'tokens');
           const path = [juniorTokenAddress!, seniorTokenAddress!];
           const balanceString = juniorBalance.toFixed(18);
           
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
-          console.log('Swapping', balanceString, 'JUNIOR for minimum', minOutput, 'SENIOR');
           await swapExactTokensForTokens(balanceString, minOutput, path);
-        } else {
-          console.log('Junior balance too small to swap:', juniorBalance);
         }
       } else if (tradeType === 'fullRisk') {
         // Get fresh senior token balance directly from blockchain
         const freshSeniorBalance = await getTokenBalance(seniorTokenAddress!);
-        const seniorBalanceWei = Number(freshSeniorBalance);
-        const seniorBalance = seniorBalanceWei / 1e18;
-        
-        console.log('Fresh senior balance from blockchain:', seniorBalance);
-        console.log('Stale state balance was:', Number(balances.seniorTokens) / 1e18);
+        const seniorBalance = Number(freshSeniorBalance) / 1e18;
         
         // Only proceed if we have meaningful senior tokens (more than 0.001)
         if (seniorBalance > 0.001) {
-          console.log('Proceeding with swap, balance is:', seniorBalance, 'tokens');
           const path = [seniorTokenAddress!, juniorTokenAddress!];
           const balanceString = seniorBalance.toFixed(18);
           
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
-          console.log('Swapping', balanceString, 'SENIOR for minimum', minOutput, 'JUNIOR');
           await swapExactTokensForTokens(balanceString, minOutput, path);
-        } else {
-          console.log('Senior balance too small to swap:', seniorBalance);
         }
       }
       // For 'balanced', no additional trading needed - deposit gives 50/50 split
       
-      setShowLiquiditySuggestion(true);
+      // Only show liquidity suggestion for balanced deposits (where user gets both tokens)
+      if (tradeType === 'balanced') {
+        setShowLiquiditySuggestion(true);
+      }
+      
       setDepositAmount('');
     } catch (error) {
       console.error('Deposit and trade failed:', error);
@@ -392,49 +379,15 @@ const QuickTrade: React.FC = () => {
       </Card>
 
       {/* Smart Liquidity Suggestion */}
-      {showLiquiditySuggestion && seniorValue > 0.01 && juniorValue > 0.01 && (
-        <Card className="bg-slate-800/50 border-blue-600/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-blue-400 flex items-center">
-              <Droplets className="w-6 h-6 mr-2" />
-              Smart Liquidity Suggestion
-            </CardTitle>
-            <p className="text-slate-300">
-              You just earned tokens! Add them to the liquidity pool to earn trading fees.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <div>
-                <p className="text-white font-medium">Available tokens:</p>
-                <p className="text-slate-300 text-sm">
-                  {seniorValue.toFixed(4)} SENIOR + {juniorValue.toFixed(4)} JUNIOR
-                </p>
-                <p className="text-slate-300 text-xs opacity-80">
-                  Will add optimal amounts to match pool ratio
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <Button 
-                  onClick={handleAddLiquidity}
-                  disabled={!isConnected || (seniorValue <= 0 && juniorValue <= 0) || isExecuting}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Droplets className="w-4 h-4 mr-2" />
-                  Add to Pool
-                </Button>
-                <Button 
-                  onClick={() => setShowLiquiditySuggestion(false)}
-                  variant="outline"
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                >
-                  Later
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <SmartLiquiditySuggestion
+        isVisible={showLiquiditySuggestion}
+        seniorValue={seniorValue}
+        juniorValue={juniorValue}
+        isExecuting={isExecuting}
+        isConnected={isConnected}
+        onAddLiquidity={handleAddLiquidity}
+        onDismiss={() => setShowLiquiditySuggestion(false)}
+      />
 
       {/* Execution Status */}
       {isExecuting && (
