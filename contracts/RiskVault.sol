@@ -234,10 +234,10 @@ contract RiskVault is Ownable, ReentrancyGuard {
      * @return aUSDCAmount Amount of aUSDC to withdraw
      * @return cUSDTAmount Amount of cUSDT to withdraw
      */
-    function _calculateWithdrawalAmounts(uint256 totalTokensToWithdraw) 
-        internal 
-        view 
-        returns (uint256 aUSDCAmount, uint256 cUSDTAmount) 
+    function _calculateWithdrawalAmounts(uint256 totalTokensToWithdraw)
+        internal
+        view
+        returns (uint256 aUSDCAmount, uint256 cUSDTAmount)
     {
         if (totalTokensIssued == 0) return (0, 0);
         
@@ -250,6 +250,31 @@ contract RiskVault is Ownable, ReentrancyGuard {
             aUSDCAmount = (userShare * aUSDCBalance) / totalVaultValue;
             cUSDTAmount = (userShare * cUSDTBalance) / totalVaultValue;
         }
+    }
+
+    /**
+     * @dev Calculates withdrawal amount for a specific asset
+     * @param totalTokensToWithdraw Total tokens being withdrawn
+     * @param preferredAsset The specific asset to withdraw
+     * @return withdrawAmount Amount of the preferred asset to withdraw
+     */
+    function _calculateSingleAssetWithdrawal(uint256 totalTokensToWithdraw, address preferredAsset)
+        internal
+        view
+        returns (uint256 withdrawAmount)
+    {
+        if (totalTokensIssued == 0) return 0;
+        if (!_isAssetSupported(preferredAsset)) return 0;
+        
+        // Calculate user's share of total vault value
+        uint256 totalVaultValue = _getTotalVaultValue();
+        uint256 userShare = (totalTokensToWithdraw * totalVaultValue) / totalTokensIssued;
+        
+        // Check if we have enough of the preferred asset
+        uint256 assetBalance = preferredAsset == aUSDC ? aUSDCBalance : cUSDTBalance;
+        
+        // Return the minimum of user's share or available asset balance
+        withdrawAmount = userShare > assetBalance ? assetBalance : userShare;
     }
 
     // Admin Functions
@@ -295,51 +320,14 @@ contract RiskVault is Ownable, ReentrancyGuard {
         emit AssetDeposited(msg.sender, asset, depositAmount, depositAmount);
     }
 
-    /**
-     * @dev Withdraws tokens during SENIOR_CLAIMS phase (senior tokens only)
-     * @param seniorAmount Amount of senior tokens to withdraw
-     */
-    function withdrawSeniorTokens(uint256 seniorAmount)
-        external
-        onlyDuringPhase(Phase.CLAIMS)
-        whenNotEmergency
-        nonReentrant
-    {
-        if (seniorAmount == 0) revert NoTokensToWithdraw();
-
-        // Calculate proportional withdrawal amounts
-        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(seniorAmount);
-        
-        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
-
-        // Burn only senior tokens
-        _burnTokens(msg.sender, seniorAmount, 0);
-
-        // Update vault balances
-        aUSDCBalance -= aUSDCAmount;
-        cUSDTBalance -= cUSDTAmount;
-
-        // Transfer assets back to user
-        if (aUSDCAmount > 0) {
-            if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
-        if (cUSDTAmount > 0) {
-            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
-
-        emit TokensWithdrawn(msg.sender, seniorAmount, 0, aUSDCAmount, cUSDTAmount);
-    }
 
     /**
      * @dev Withdraws tokens during any phase with specific conditions
      * @param seniorAmount Amount of senior tokens to withdraw
      * @param juniorAmount Amount of junior tokens to withdraw
+     * @param preferredAsset Optional: specific asset to withdraw (address(0) for proportional split)
      */
-    function withdraw(uint256 seniorAmount, uint256 juniorAmount)
+    function withdraw(uint256 seniorAmount, uint256 juniorAmount, address preferredAsset)
         external
         whenNotEmergency
         nonReentrant
@@ -349,9 +337,6 @@ contract RiskVault is Ownable, ReentrancyGuard {
         
         uint256 totalTokensToWithdraw = seniorAmount + juniorAmount;
         if (totalTokensToWithdraw == 0) revert NoTokensToWithdraw();
-
-        // Calculate proportional withdrawal amounts
-        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(totalTokensToWithdraw);
 
         // Check phase-specific withdrawal conditions
         if (currentPhase == Phase.CLAIMS && emergencyMode) {
@@ -364,27 +349,55 @@ contract RiskVault is Ownable, ReentrancyGuard {
             }
         }
         // During SENIOR_CLAIMS (non-emergency) and FINAL_CLAIMS phases, any combination is allowed
-        
-        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
+
+        uint256 aUSDCAmount;
+        uint256 cUSDTAmount;
+
+        if (preferredAsset == address(0)) {
+            // Proportional withdrawal across both assets
+            (aUSDCAmount, cUSDTAmount) = _calculateWithdrawalAmounts(totalTokensToWithdraw);
+            
+            if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
+
+            // Update vault balances
+            aUSDCBalance -= aUSDCAmount;
+            cUSDTBalance -= cUSDTAmount;
+
+            // Transfer assets back to user
+            if (aUSDCAmount > 0) {
+                if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
+                    revert TransferOperationFailed();
+                }
+            }
+            if (cUSDTAmount > 0) {
+                if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
+                    revert TransferOperationFailed();
+                }
+            }
+        } else {
+            // Single asset withdrawal
+            if (!_isAssetSupported(preferredAsset)) revert UnsupportedAsset();
+            
+            uint256 withdrawAmount = _calculateSingleAssetWithdrawal(totalTokensToWithdraw, preferredAsset);
+            if (withdrawAmount == 0) revert NoFundsToWithdraw();
+
+            // Update vault balance for the specific asset
+            if (preferredAsset == aUSDC) {
+                aUSDCBalance -= withdrawAmount;
+                aUSDCAmount = withdrawAmount;
+            } else {
+                cUSDTBalance -= withdrawAmount;
+                cUSDTAmount = withdrawAmount;
+            }
+
+            // Transfer the preferred asset to user
+            if (!IERC20(preferredAsset).transfer(msg.sender, withdrawAmount)) {
+                revert TransferOperationFailed();
+            }
+        }
 
         // Burn the tokens
         _burnTokens(msg.sender, seniorAmount, juniorAmount);
-
-        // Update vault balances
-        aUSDCBalance -= aUSDCAmount;
-        cUSDTBalance -= cUSDTAmount;
-
-        // Transfer assets back to user
-        if (aUSDCAmount > 0) {
-            if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
-        if (cUSDTAmount > 0) {
-            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
 
         emit TokensWithdrawn(msg.sender, seniorAmount, juniorAmount, aUSDCAmount, cUSDTAmount);
     }
@@ -440,44 +453,6 @@ contract RiskVault is Ownable, ReentrancyGuard {
         emit EmergencyWithdrawal(msg.sender, seniorAmount, preferredAsset, withdrawAmount);
     }
 
-    /**
-     * @dev Withdraws all available tokens for maximum asset recovery (FINAL_CLAIMS phase only)
-     */
-    function withdrawAll() external onlyDuringPhase(Phase.FINAL_CLAIMS) whenNotEmergency nonReentrant {
-        uint256 seniorBalance = IRiskToken(seniorToken).balanceOf(msg.sender);
-        uint256 juniorBalance = IRiskToken(juniorToken).balanceOf(msg.sender);
-
-        if (seniorBalance == 0 && juniorBalance == 0) revert NoTokensToWithdraw();
-
-        // Call the internal withdrawal logic directly
-        uint256 totalTokensToWithdraw = seniorBalance + juniorBalance;
-
-        // Calculate proportional withdrawal amounts
-        (uint256 aUSDCAmount, uint256 cUSDTAmount) = _calculateWithdrawalAmounts(totalTokensToWithdraw);
-        
-        if (aUSDCAmount == 0 && cUSDTAmount == 0) revert NoFundsToWithdraw();
-
-        // Burn the tokens
-        _burnTokens(msg.sender, seniorBalance, juniorBalance);
-
-        // Update vault balances
-        aUSDCBalance -= aUSDCAmount;
-        cUSDTBalance -= cUSDTAmount;
-
-        // Transfer assets back to user
-        if (aUSDCAmount > 0) {
-            if (!IERC20(aUSDC).transfer(msg.sender, aUSDCAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
-        if (cUSDTAmount > 0) {
-            if (!IERC20(cUSDT).transfer(msg.sender, cUSDTAmount)) {
-                revert TransferOperationFailed();
-            }
-        }
-
-        emit TokensWithdrawn(msg.sender, seniorBalance, juniorBalance, aUSDCAmount, cUSDTAmount);
-    }
 
     // View Functions
     /**
@@ -503,13 +478,29 @@ contract RiskVault is Ownable, ReentrancyGuard {
      * @return aUSDCAmount Amount of aUSDC that would be withdrawn
      * @return cUSDTAmount Amount of cUSDT that would be withdrawn
      */
-    function calculateWithdrawalAmounts(uint256 seniorAmount, uint256 juniorAmount) 
-        external 
-        view 
-        returns (uint256 aUSDCAmount, uint256 cUSDTAmount) 
+    function calculateWithdrawalAmounts(uint256 seniorAmount, uint256 juniorAmount)
+        external
+        view
+        returns (uint256 aUSDCAmount, uint256 cUSDTAmount)
     {
         uint256 totalTokens = seniorAmount + juniorAmount;
         return _calculateWithdrawalAmounts(totalTokens);
+    }
+
+    /**
+     * @dev Calculates withdrawal amount for a specific asset
+     * @param seniorAmount Amount of senior tokens
+     * @param juniorAmount Amount of junior tokens
+     * @param preferredAsset The asset to withdraw (aUSDC or cUSDT)
+     * @return withdrawAmount Amount of the preferred asset that would be withdrawn
+     */
+    function calculateSingleAssetWithdrawal(uint256 seniorAmount, uint256 juniorAmount, address preferredAsset)
+        external
+        view
+        returns (uint256 withdrawAmount)
+    {
+        uint256 totalTokens = seniorAmount + juniorAmount;
+        return _calculateSingleAssetWithdrawal(totalTokens, preferredAsset);
     }
 
     /**
