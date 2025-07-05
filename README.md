@@ -187,6 +187,19 @@ uniswapRouter.swapExactTokensForTokens(
 
 ### For Developers
 
+#### Test Coverage
+
+- Automated tests are provided for all core contracts in [`test/RiskToken.test.ts`](test/RiskToken.test.ts) and [`test/RiskVault.test.ts`](test/RiskVault.test.ts).
+- The test suite covers:
+  - Deployment and initialization
+  - Minting and burning permissions and edge cases
+  - Deposit and withdrawal logic, including error scenarios
+  - Asset support and minimum/uneven deposit checks
+  - Event emission and state changes
+  - Revert and access control checks
+
+#### Running Tests
+
 ```bash
 # Install dependencies
 npm install
@@ -194,8 +207,11 @@ npm install
 # Compile contracts
 npx hardhat compile
 
-# Run tests
+# Run all tests
 npx hardhat test
+```
+
+All tests should pass. For troubleshooting, ensure you are using a compatible Node.js version and Hardhat is installed.
 
 # Deploy to local network
 npx hardhat ignition deploy ignition/modules/RiskToken.ts --network localhost
