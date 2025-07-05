@@ -371,16 +371,12 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <TokenBalance
-                    name="CM-SENIOR"
-                    amount={parseFloat(formatTokenAmount(balances.seniorTokens))}
-                    price={1.0}
-                    icon={<Shield className="h-6 w-6 text-blue-500" />}
+                    type="senior"
+                    balance={parseFloat(formatTokenAmount(balances.seniorTokens))}
                   />
                   <TokenBalance
-                    name="CM-JUNIOR"
-                    amount={parseFloat(formatTokenAmount(balances.juniorTokens))}
-                    price={1.0}
-                    icon={<Coins className="h-6 w-6 text-green-500" />}
+                    type="junior"
+                    balance={parseFloat(formatTokenAmount(balances.juniorTokens))}
                   />
                 </CardContent>
               </Card>
@@ -392,16 +388,12 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <TokenBalance
-                    name="aUSDC"
-                    amount={parseFloat(formatTokenAmount(balances.aUSDC))}
-                    price={1.0}
-                    icon={<DollarSign className="h-6 w-6 text-blue-500" />}
+                    type="aUSDC"
+                    balance={parseFloat(formatTokenAmount(balances.aUSDC))}
                   />
                   <TokenBalance
-                    name="cUSDT"
-                    amount={parseFloat(formatTokenAmount(balances.cUSDT))}
-                    price={1.0}
-                    icon={<DollarSign className="h-6 w-6 text-green-500" />}
+                    type="cUSDT"
+                    balance={parseFloat(formatTokenAmount(balances.cUSDT))}
                   />
                 </CardContent>
               </Card>

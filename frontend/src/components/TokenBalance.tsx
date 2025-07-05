@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Info, Building2, Landmark } from 'lucide-react';
 
 interface TokenBalanceProps {
-  type: 'protected' | 'standard' | 'LP';
+  type: 'senior' | 'junior' | 'aUSDC' | 'cUSDT';
   balance: number;
   interestRate?: number;
   className?: string;
@@ -20,23 +20,24 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
 }) => {
   const getTokenDetails = () => {
     switch (type) {
-      case 'protected':
+      case 'aUSDC':
         return {
-          name: 'Protected Money',
-          color: 'bg-blue-600/20 text-blue-400',
+          name: 'Aave USDC (aUSDC)',
+          color: 'bg-purple-600/20 text-purple-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 13V4M8 13H4M8 13V20M16 13V4M16 13H20M16 13V20"/>
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
             </svg>
           ),
-          riskLevel: 'First in Line',
-          riskBadge: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
-          tooltip: 'Protected money gets you to the front of the line during emergencies. Deposited equally into Aave and Compound protocols.',
-          protocolInfo: 'Deposited 50% in Aave, 50% in Compound'
+          riskLevel: 'Yield-Bearing',
+          riskBadge: 'bg-purple-600/20 text-purple-400 border-purple-600/30',
+          tooltip: 'Interest-bearing USDC from Aave protocol. Used as collateral in CoverVault for risk tokenization.',
+          protocolInfo: 'Aave Protocol Asset'
         };
-      case 'standard':
+      case 'cUSDT':
         return {
-          name: 'Regular Money',
+          name: 'Compound USDT (cUSDT)',
           color: 'bg-green-600/20 text-green-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,29 +49,39 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
               <path d="M7 10h5"/>
             </svg>
           ),
-          riskLevel: 'Regular Access',
-          riskBadge: 'bg-amber-600/20 text-amber-400 border-amber-600/30',
-          tooltip: 'Regular money earns the same interest but has normal priority during emergencies. Deposited equally into Aave and Compound protocols.',
-          protocolInfo: 'Deposited 50% in Aave, 50% in Compound'
+          riskLevel: 'Yield-Bearing',
+          riskBadge: 'bg-green-600/20 text-green-400 border-green-600/30',
+          tooltip: 'Interest-bearing USDT from Compound protocol. Used as collateral in CoverVault for risk tokenization.',
+          protocolInfo: 'Compound Protocol Asset'
         };
-      case 'LP':
+      case 'senior':
         return {
-          name: 'Pool Helper (Coming Soon)',
-          color: 'bg-purple-600/20 text-purple-400',
+          name: 'Senior Tokens (CM-SENIOR)',
+          color: 'bg-blue-600/20 text-blue-400',
           icon: (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 3v12"/>
-              <path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-              <path d="M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-              <path d="M15 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
-              <path d="M18 6l-6.5 3.5"/>
-              <path d="M15 18l-6.5-3.5"/>
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
           ),
-          riskLevel: 'Earning Extra',
-          riskBadge: 'bg-purple-600/20 text-purple-400 border-purple-600/30',
-          tooltip: 'Earn bonus rewards by helping the system work smoothly. Your money helps others move between protected and regular accounts.',
-          protocolInfo: 'Internal CoverVault liquidity pool'
+          riskLevel: 'Priority Withdrawal',
+          riskBadge: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
+          tooltip: 'Senior tokens get priority during withdrawals. In emergency mode, senior tokens are processed first.',
+          protocolInfo: 'RiskVault Protocol - Priority Position'
+        };
+      case 'junior':
+        return {
+          name: 'Junior Tokens (CM-JUNIOR)',
+          color: 'bg-amber-600/20 text-amber-400',
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          ),
+          riskLevel: 'Standard Position',
+          riskBadge: 'bg-amber-600/20 text-amber-400 border-amber-600/30',
+          tooltip: 'Junior tokens are processed after senior tokens during withdrawals. Equal claim on vault assets.',
+          protocolInfo: 'RiskVault Protocol - Standard Position'
         };
       default:
         return {
@@ -123,17 +134,26 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
                 )}
               </div>
               {/* Protocol information */}
-              {type !== 'LP' && (
-                <div className="flex items-center mt-2 text-xs text-slate-400">
-                  <div className="flex items-center space-x-1">
-                    <Landmark size={12} className="text-purple-400" />
-                    <span>Aave</span>
-                    <span className="mx-1">•</span>
-                    <Building2 size={12} className="text-green-400" />
-                    <span>Compound</span>
-                  </div>
+              <div className="flex items-center mt-2 text-xs text-slate-400">
+                <div className="flex items-center space-x-1">
+                  {type === 'aUSDC' ? (
+                    <>
+                      <Landmark size={12} className="text-purple-400" />
+                      <span>Aave</span>
+                    </>
+                  ) : type === 'cUSDT' ? (
+                    <>
+                      <Building2 size={12} className="text-green-400" />
+                      <span>Compound</span>
+                    </>
+                  ) : (
+                    <>
+                      <Building2 size={12} className="text-blue-400" />
+                      <span>CoverVault</span>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -141,11 +161,9 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
             <div className="text-xs text-slate-400">
               <span>${dollarValue.toFixed(2)}</span>
             </div>
-            {type !== 'LP' && (
-              <div className="text-xs text-slate-500 mt-1">
-                via Aave + Compound
-              </div>
-            )}
+            <div className="text-xs text-slate-500 mt-1">
+              {type === 'aUSDC' ? 'via Aave Protocol' : type === 'cUSDT' ? 'via Compound Protocol' : 'via CoverVault'}
+            </div>
           </div>
         </div>
       </CardContent>

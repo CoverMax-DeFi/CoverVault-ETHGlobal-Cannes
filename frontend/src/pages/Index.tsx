@@ -72,12 +72,7 @@ const Index = () => {
             </Link>
             
             <div className="flex items-center space-x-6">
-              <Link to="/insurance" className="text-slate-300 hover:text-white transition-colors">
-                Documentation
-              </Link>
-              <Link to="/admin" className="text-slate-300 hover:text-white transition-colors">
-                Analytics
-              </Link>
+
               <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 <Link to="/dashboard">
                   {isConnected ? 'Dashboard' : 'Launch App'}
@@ -99,27 +94,28 @@ const Index = () => {
             </Badge>
             
             <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Insurance-Backed
+              Turn Insurance Risk Into
               <br />
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                DeFi Yields
+                Tradeable Tokens
               </span>
             </h1>
             
             <p className="text-xl text-slate-300 mb-8 leading-relaxed max-w-2xl mx-auto">
-              Earn protected yields through our innovative dual-token system. 
-              Senior tokens get priority claims, junior tokens capture upside potential.
+              Deposit your assets → Get risk tokens → Trade them on Uniswap.
+              <br />
+              <span className="text-blue-400 font-medium">Senior tokens = safety first. Junior tokens = higher upside.</span>
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6">
                 <Link to="/dashboard">
-                  Start Earning
+                  Start Trading
                   <TrendingUp className="ml-2 w-5 h-5" />
                 </Link>
               </Button>
               <Button size="lg" asChild className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 hover:border-slate-500 text-lg px-8 py-6">
-                <Link to="/insurance">
+                <Link >
                   Learn More
                 </Link>
               </Button>
@@ -145,10 +141,10 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Built for Risk Management
+              Built for Risk Tokenization
             </h2>
             <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-              Advanced protocols designed to balance yield generation with capital protection
+              Revolutionary protocol that transforms insurance risk into tradeable tokens on Uniswap
             </p>
           </div>
 
@@ -166,81 +162,100 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="relative z-10 py-24">
+      {/* Simple How It Works */}
+      <section className="relative z-10 py-20">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              How CoverVault Works
+              Dead Simple Process
             </h2>
-            <p className="text-slate-300 text-lg">
-              Simple steps to start earning protected yields
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform">
-                1
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-12">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
+                  1
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Deposit</h3>
+                <p className="text-slate-400 text-sm">Put in aUSDC/cUSDT</p>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Deposit Assets</h3>
-              <p className="text-slate-300">
-                Deposit aUSDC or cUSDT during the deposit phase to receive equal amounts of senior and junior tokens
-              </p>
+              
+              <ArrowRight className="w-8 h-8 text-slate-600 rotate-90 md:rotate-0" />
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
+                  2
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Get Tokens</h3>
+                <p className="text-slate-400 text-sm">Receive senior + junior</p>
+              </div>
+              
+              <ArrowRight className="w-8 h-8 text-slate-600 rotate-90 md:rotate-0" />
+              
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-pink-600 to-red-600 rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
+                  3
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Trade</h3>
+                <p className="text-slate-400 text-sm">Buy/sell on Uniswap</p>
+              </div>
             </div>
-
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform">
-                2
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Earn Yield</h3>
-              <p className="text-slate-300">
-                Your assets generate yield during the coverage phase while being protected by the insurance mechanism
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-gradient-to-r from-pink-600 to-red-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 group-hover:scale-110 transition-transform">
-                3
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Claim Rewards</h3>
-              <p className="text-slate-300">
-                Withdraw your principal plus yields during the claims phases based on your token priority
+            
+            <div className="text-center mt-12">
+              <p className="text-lg text-slate-300">
+                <span className="text-blue-400 font-medium">Why?</span> Because now you can buy/sell insurance risk like any other token.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Protocol Phases */}
-      <section className="relative z-10 py-24 bg-slate-800/30">
+      {/* Token Comparison */}
+      <section className="relative z-10 py-20 bg-slate-800/30">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Protocol Phases
+              Two Risk Types
             </h2>
             <p className="text-slate-300 text-lg">
-              Time-based cycles ensure fair and efficient operations
+              Choose your risk level
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {[
-              { phase: "Deposit", duration: "2 days", description: "Users deposit assets and receive CM tokens", color: "from-green-600 to-emerald-600" },
-              { phase: "Coverage", duration: "3 days", description: "Assets earn yield while locked and protected", color: "from-blue-600 to-cyan-600" },
-              { phase: "Claims", duration: "1 day", description: "Senior token holders can withdraw first", color: "from-orange-600 to-amber-600" },
-              { phase: "Final Claims", duration: "1 day", description: "All remaining tokens can be withdrawn", color: "from-red-600 to-rose-600" }
-            ].map((phase, index) => (
-              <Card key={index} className="bg-slate-800/50 border-slate-700 backdrop-blur-sm p-6 hover:bg-slate-800/70 transition-all duration-300">
-                <div className={`w-full h-2 bg-gradient-to-r ${phase.color} rounded-full mb-4`}></div>
-                <h3 className="text-lg font-semibold text-white mb-2">{phase.phase}</h3>
-                <p className="text-blue-400 text-sm font-medium mb-2">{phase.duration}</p>
-                <p className="text-slate-300 text-sm">{phase.description}</p>
-              </Card>
-            ))}
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm p-6 text-center">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white mx-auto mb-4">
+                <Shield className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-semibold text-white mb-2">Senior Tokens</h3>
+              <p className="text-blue-400 mb-4">"Safety First"</p>
+              <p className="text-slate-300 text-sm">
+                Get paid out first if things go wrong. Lower risk, lower reward.
+              </p>
+            </Card>
+
+            <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm p-6 text-center">
+              <div className="w-16 h-16 bg-amber-600 rounded-full flex items-center justify-center text-white mx-auto mb-4">
+                <TrendingUp className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-semibold text-white mb-2">Junior Tokens</h3>
+              <p className="text-amber-400 mb-4">"High Upside"</p>
+              <p className="text-slate-300 text-sm">
+                Get paid after seniors. Higher risk, higher potential reward.
+              </p>
+            </Card>
+          </div>
+          
+          <div className="text-center mt-8">
+            <p className="text-slate-400">
+              Both types are tradeable on Uniswap • Adjust your risk anytime
+            </p>
           </div>
         </div>
       </section>
+
+
 
       {/* CTA Section */}
       <section className="relative z-10 py-24">
@@ -249,34 +264,21 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10"></div>
             <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              Ready to Start Earning?
+              Ready to Try It?
             </h2>
             <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto">
-              Connect your wallet and experience the future of protected DeFi yields. 
-              No KYC required, just pure decentralized finance.
+              Turn your DeFi assets into tradeable risk tokens.
             </p>
             
-            <div className="flex items-center justify-center space-x-6 mb-8">
-              {[
-                { icon: <Lock className="w-5 h-5" />, label: "Non-custodial" },
-                { icon: <Shield className="w-5 h-5" />, label: "Protected" },
-                { icon: <Layers className="w-5 h-5" />, label: "Dual-token" }
-              ].map((item, index) => (
-                <div key={index} className="flex items-center space-x-2 text-slate-300">
-                  <div className="text-blue-400">
-                    {item.icon}
-                  </div>
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
 
-            <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6">
-              <Link to="/dashboard">
-                Launch CoverVault
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6">
+                <Link to="/dashboard">
+                  Launch Protocol
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </Button>
+            </div>
             </div>
           </Card>
         </div>
@@ -301,7 +303,7 @@ const Index = () => {
               <h4 className="font-semibold text-white mb-4">Protocol</h4>
               <div className="space-y-2">
                 <Link to="/dashboard" className="block text-slate-400 hover:text-white transition-colors">Dashboard</Link>
-                <Link to="/insurance" className="block text-slate-400 hover:text-white transition-colors">Documentation</Link>
+                <Link to="/insurance" className="block text-slate-400 hover:text-white transition-colors">Try Demo</Link>
                 <Link to="/admin" className="block text-slate-400 hover:text-white transition-colors">Analytics</Link>
               </div>
             </div>
