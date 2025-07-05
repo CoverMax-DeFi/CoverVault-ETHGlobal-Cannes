@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, ArrowUpDown, TrendingUp, Minus } from 'lucide-react';
-import { Phase } from '@/config/contracts';
+import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, ArrowUpDown, TrendingUp, Minus, Activity } from 'lucide-react';
+import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
 import { ethers } from 'ethers';
 
 const Dashboard = () => {
@@ -30,6 +30,7 @@ const Dashboard = () => {
     addLiquidity,
     removeLiquidity,
     swapExactTokensForTokens,
+    getPairReserves,
   } = useWeb3();
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -42,6 +43,10 @@ const Dashboard = () => {
   const [seniorPrice, setSeniorPrice] = useState('0.98');
   const [juniorPrice, setJuniorPrice] = useState('1.05');
   const [pricesLoading, setPricesLoading] = useState(false);
+  
+  // Pool reserves state
+  const [poolReserves, setPoolReserves] = useState({ senior: '0', junior: '0' });
+  const [poolLoading, setPoolLoading] = useState(false);
   
   // Liquidity management state
   const [liquiditySeniorAmount, setLiquiditySeniorAmount] = useState('');
@@ -90,7 +95,7 @@ const Dashboard = () => {
     }
   }, [rebalanceAmount, rebalanceFrom, rebalanceTo, seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
 
-  // Fetch token prices from Uniswap pair
+  // Fetch token prices and pool reserves from Uniswap pair
   useEffect(() => {
     const fetchTokenPrices = async () => {
       if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut) return;
@@ -125,11 +130,46 @@ const Dashboard = () => {
       }
     };
 
+    const fetchPoolReserves = async () => {
+      if (!getPairReserves) return;
+      
+      try {
+        const reserves = await getPairReserves(CONTRACT_ADDRESSES.SeniorJuniorPair);
+        
+        // Format reserves from wei to ether
+        const seniorReserve = ethers.formatEther(reserves.reserve0);
+        const juniorReserve = ethers.formatEther(reserves.reserve1);
+        
+        // Only update if values have changed significantly (avoid micro-updates)
+        const currentSenior = parseFloat(poolReserves.senior);
+        const currentJunior = parseFloat(poolReserves.junior);
+        const newSenior = parseFloat(seniorReserve);
+        const newJunior = parseFloat(juniorReserve);
+        
+        if (Math.abs(currentSenior - newSenior) > 0.01 || Math.abs(currentJunior - newJunior) > 0.01) {
+          setPoolReserves({
+            senior: seniorReserve,
+            junior: juniorReserve,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching pool reserves:', error);
+        // Only reset if we don't have valid data
+        if (poolReserves.senior === '0' && poolReserves.junior === '0') {
+          setPoolReserves({ senior: '0', junior: '0' });
+        }
+      }
+    };
+
     fetchTokenPrices();
-    const interval = setInterval(fetchTokenPrices, 5000); // Update every 5 seconds for real-time updates
+    fetchPoolReserves();
+    const interval = setInterval(() => {
+      fetchTokenPrices();
+      fetchPoolReserves();
+    }, 30000); // Update every 30 seconds to reduce twitching
     
     return () => clearInterval(interval);
-  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
+  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves]);
 
   // Update withdrawal estimates
   useEffect(() => {
@@ -274,7 +314,7 @@ const Dashboard = () => {
         </div>
 
         {/* Portfolio Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Portfolio Value"
             value={`$${totalPortfolioValue.toFixed(2)}`}
@@ -294,6 +334,13 @@ const Dashboard = () => {
             value={`$${juniorPrice}`}
             icon={<Coins className="h-5 w-5" />}
             description="Higher yield token"
+            className="transition-all duration-300"
+          />
+          <StatCard
+            title="Pool Liquidity"
+            value={poolReserves.senior === '0' && poolReserves.junior === '0' ? 'Loading...' : `${parseFloat(poolReserves.senior).toFixed(2)} / ${parseFloat(poolReserves.junior).toFixed(2)}`}
+            icon={<Activity className="h-5 w-5" />}
+            description="SENIOR / JUNIOR in pool"
             className="transition-all duration-300"
           />
         </div>
