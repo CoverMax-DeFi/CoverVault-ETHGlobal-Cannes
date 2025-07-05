@@ -262,6 +262,51 @@ const Dashboard = () => {
     }
   };
 
+  const handleEqualizeRisk = async () => {
+    try {
+      const seniorAmount = parseFloat(formatTokenAmount(balances.seniorTokens));
+      const juniorAmount = parseFloat(formatTokenAmount(balances.juniorTokens));
+      
+      if (seniorAmount <= 0 && juniorAmount <= 0) return;
+      
+      // Calculate the difference to equalize
+      const totalValue = (seniorAmount * parseFloat(seniorPrice)) + (juniorAmount * parseFloat(juniorPrice));
+      const targetValue = totalValue / 2;
+      
+      // Determine which token to swap and how much
+      const seniorValue = seniorAmount * parseFloat(seniorPrice);
+      const juniorValue = juniorAmount * parseFloat(juniorPrice);
+      
+      if (seniorValue > targetValue) {
+        // Need to swap some SENIOR to JUNIOR
+        const excessValue = seniorValue - targetValue;
+        const swapAmount = (excessValue / parseFloat(seniorPrice)).toString();
+        
+        if (seniorTokenAddress && juniorTokenAddress) {
+          const path = [seniorTokenAddress, juniorTokenAddress];
+          const estimate = await getAmountsOut(swapAmount, path);
+          const minOutput = (parseFloat(estimate) * 0.95).toString(); // 5% slippage
+          
+          await swapExactTokensForTokens(swapAmount, minOutput, path);
+        }
+      } else if (juniorValue > targetValue) {
+        // Need to swap some JUNIOR to SENIOR
+        const excessValue = juniorValue - targetValue;
+        const swapAmount = (excessValue / parseFloat(juniorPrice)).toString();
+        
+        if (seniorTokenAddress && juniorTokenAddress) {
+          const path = [juniorTokenAddress, seniorTokenAddress];
+          const estimate = await getAmountsOut(swapAmount, path);
+          const minOutput = (parseFloat(estimate) * 0.95).toString(); // 5% slippage
+          
+          await swapExactTokensForTokens(swapAmount, minOutput, path);
+        }
+      }
+    } catch (error) {
+      console.error('Equalize risk failed:', error);
+    }
+  };
+
   // Get available balance for rebalancing
   const getRebalanceBalance = () => {
     if (rebalanceFrom === 'senior') {

@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
-import { Shield, TrendingUp, LogOut, Zap } from 'lucide-react';
+import { Shield, TrendingUp, Scale, Zap } from 'lucide-react';
 
-type TradeIntent = 'safety' | 'upside' | 'exit';
+type TradeIntent = 'safety' | 'upside' | 'equalize';
 
 const QuickTrade: React.FC = () => {
   const { 
@@ -31,6 +31,42 @@ const QuickTrade: React.FC = () => {
   const aUSDCValue = Number(balances.aUSDC) / 1e18;
   const cUSDTValue = Number(balances.cUSDT) / 1e18;
   const totalAssets = aUSDCValue + cUSDTValue;
+  
+  const handleEqualizeRisk = async () => {
+    try {
+      // Calculate the difference to equalize
+      const totalValue = seniorValue + juniorValue; // Using token amounts instead of USD values for simplicity
+      const targetAmount = totalValue / 2;
+      
+      // Determine which token to swap and how much
+      if (seniorValue > targetAmount) {
+        // Need to swap some SENIOR to JUNIOR
+        const swapAmount = (seniorValue - targetAmount).toString();
+        
+        if (seniorTokenAddress && juniorTokenAddress) {
+          const path = [seniorTokenAddress, juniorTokenAddress];
+          const estimate = await getAmountsOut(swapAmount, path);
+          const minOutput = (parseFloat(estimate) * 0.95).toString(); // 5% slippage
+          
+          await swapExactTokensForTokens(swapAmount, minOutput, path);
+        }
+      } else if (juniorValue > targetAmount) {
+        // Need to swap some JUNIOR to SENIOR
+        const swapAmount = (juniorValue - targetAmount).toString();
+        
+        if (seniorTokenAddress && juniorTokenAddress) {
+          const path = [juniorTokenAddress, seniorTokenAddress];
+          const estimate = await getAmountsOut(swapAmount, path);
+          const minOutput = (parseFloat(estimate) * 0.95).toString(); // 5% slippage
+          
+          await swapExactTokensForTokens(swapAmount, minOutput, path);
+        }
+      }
+    } catch (error) {
+      console.error('Equalize risk failed:', error);
+      throw error;
+    }
+  };
   
   // Update estimated output when amount or intent changes
   useEffect(() => {
@@ -58,7 +94,7 @@ const QuickTrade: React.FC = () => {
       }
     };
 
-    if (intent !== 'exit' && amount && parseFloat(amount) > 0) {
+    if (intent !== 'equalize' && amount && parseFloat(amount) > 0) {
       updateEstimate();
       // Update estimate every 3 seconds for real-time pricing
       const interval = setInterval(updateEstimate, 3000);
@@ -84,19 +120,19 @@ const QuickTrade: React.FC = () => {
           color: 'bg-amber-600',
           action: `You'll get ~${parseFloat(estimatedOutput).toFixed(4)} JUNIOR tokens`
         };
-      case 'exit':
+      case 'equalize':
         return {
-          title: 'Exit Position',
-          description: 'Redeem tokens for underlying assets',
-          icon: <LogOut className="w-5 h-5" />,
-          color: 'bg-slate-600',
-          action: 'This will convert your tokens back to aUSDC/cUSDT'
+          title: 'Equalize Risk',
+          description: 'Balance your SENIOR and JUNIOR tokens',
+          icon: <Scale className="w-5 h-5" />,
+          color: 'bg-purple-600',
+          action: 'This will balance your portfolio to equal amounts of SENIOR and JUNIOR tokens'
         };
     }
   };
 
   const handleExecuteTrade = useCallback(async () => {
-    if (!amount || parseFloat(amount) <= 0) {
+    if (intent !== 'equalize' && (!amount || parseFloat(amount) <= 0)) {
       alert('Please enter a valid amount');
       return;
     }
@@ -134,16 +170,9 @@ const QuickTrade: React.FC = () => {
           );
           break;
           
-        case 'exit':
-          if (amountValue > (seniorValue + juniorValue)) {
-            alert('Insufficient tokens');
-            return;
-          }
-          // Withdraw proportionally from both token types
-          const totalTokens = seniorValue + juniorValue;
-          const seniorPortion = (seniorValue / totalTokens) * amountValue;
-          const juniorPortion = (juniorValue / totalTokens) * amountValue;
-          await withdraw(seniorPortion.toString(), juniorPortion.toString());
+        case 'equalize':
+          // Call the equalize function - no amount needed as it auto-calculates
+          await handleEqualizeRisk();
           break;
       }
       
@@ -223,17 +252,17 @@ const QuickTrade: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors">
-                <RadioGroupItem value="exit" id="exit" />
+              <div className="flex items-center space-x-3 p-3 rounded-lg border border-slate-600 hover:border-purple-500 transition-colors">
+                <RadioGroupItem value="equalize" id="equalize" />
                 <div className="flex items-center space-x-3 flex-1">
-                  <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <LogOut className="w-4 h-4" />
+                  <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white">
+                    <Scale className="w-4 h-4" />
                   </div>
                   <div>
-                    <Label htmlFor="exit" className="text-white font-medium cursor-pointer">
-                      Exit position
+                    <Label htmlFor="equalize" className="text-white font-medium cursor-pointer">
+                      Equalize risk
                     </Label>
-                    <p className="text-slate-400 text-xs">Get back to stablecoins</p>
+                    <p className="text-slate-400 text-xs">Balance SENIOR and JUNIOR tokens</p>
                   </div>
                 </div>
               </div>
@@ -246,13 +275,14 @@ const QuickTrade: React.FC = () => {
           <Label className="text-slate-300 mb-2 block">
             {intent === 'safety' ? 'JUNIOR Amount' : 
              intent === 'upside' ? 'SENIOR Amount' :
-             'Total Token Value'}
+             'Auto-calculated (no input needed)'}
           </Label>
           <Input
             type="number"
-            placeholder="0.00"
+            placeholder={intent === 'equalize' ? 'Auto-calculated' : '0.00'}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            disabled={intent === 'equalize'}
             className="bg-slate-700/50 border-slate-600 text-white text-lg py-6"
           />
           <p className="text-slate-400 text-xs mt-1">
@@ -260,13 +290,13 @@ const QuickTrade: React.FC = () => {
               ? `Available: ${juniorValue.toFixed(4)} JUNIOR tokens`
               : intent === 'upside'
               ? `Available: ${seniorValue.toFixed(4)} SENIOR tokens`
-              : `Available: ${(seniorValue + juniorValue).toFixed(4)} total tokens`
+              : `Current: ${seniorValue.toFixed(4)} SENIOR, ${juniorValue.toFixed(4)} JUNIOR`
             }
           </p>
         </div>
 
         {/* Trade Preview */}
-        {amount && parseFloat(amount) > 0 && (
+        {((amount && parseFloat(amount) > 0) || intent === 'equalize') && (
           <div className="bg-slate-700/30 p-4 rounded-lg border border-slate-600">
             <h4 className="text-white font-medium mb-2">Trade Preview</h4>
             <p className="text-slate-300 text-sm">
@@ -278,7 +308,7 @@ const QuickTrade: React.FC = () => {
         {/* Execute Button */}
         <Button 
           onClick={handleExecuteTrade}
-          disabled={!amount || parseFloat(amount) <= 0 || isExecuting}
+          disabled={intent === 'equalize' ? isExecuting : (!amount || parseFloat(amount) <= 0 || isExecuting)}
           className={`w-full py-6 text-lg font-medium ${details.color} hover:opacity-90 transition-opacity`}
         >
           {isExecuting ? (
