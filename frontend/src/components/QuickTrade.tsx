@@ -32,12 +32,62 @@ const QuickTrade: React.FC = () => {
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAssetType, setDepositAssetType] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
   const [showLiquiditySuggestion, setShowLiquiditySuggestion] = useState(false);
+  const [seniorPrice, setSeniorPrice] = useState<string>('1.00');
+  const [juniorPrice, setJuniorPrice] = useState<string>('1.00');
 
   // Calculate current token values
   const seniorValue = Number(balances.seniorTokens) / 1e18;
   const juniorValue = Number(balances.juniorTokens) / 1e18;
   const aUSDCValue = Number(balances.aUSDC) / 1e18;
   const cUSDTValue = Number(balances.cUSDT) / 1e18;
+
+  // Fetch real-time token prices from the pool
+  React.useEffect(() => {
+    const fetchTokenPrices = async () => {
+      if (!seniorTokenAddress || !juniorTokenAddress || !getAmountsOut) return;
+      
+      try {
+        // Get price of 1 JUNIOR in terms of SENIOR (for max safety calculation)
+        const juniorToSeniorPath = [juniorTokenAddress, seniorTokenAddress];
+        const juniorToSeniorRate = await getAmountsOut('1', juniorToSeniorPath);
+        setSeniorPrice(juniorToSeniorRate);
+        
+        // Get price of 1 SENIOR in terms of JUNIOR (for max upside calculation)
+        const seniorToJuniorPath = [seniorTokenAddress, juniorTokenAddress];
+        const seniorToJuniorRate = await getAmountsOut('1', seniorToJuniorPath);
+        setJuniorPrice(seniorToJuniorRate);
+      } catch (error) {
+        console.error('Error fetching token prices:', error);
+        setSeniorPrice('1.00');
+        setJuniorPrice('1.00');
+      }
+    };
+
+    fetchTokenPrices();
+    const interval = setInterval(fetchTokenPrices, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut]);
+
+  // Calculate conversion amounts based on real pool prices
+  const calculateConversionAmount = (depositAmount: string, conversionType: 'toSenior' | 'toJunior') => {
+    if (!depositAmount || parseFloat(depositAmount) <= 0) return '0';
+    
+    const amount = parseFloat(depositAmount);
+    // When depositing, user gets 50/50 split initially, then we swap one side
+    const halfAmount = amount / 2;
+    
+    if (conversionType === 'toSenior') {
+      // For max safety: half stays as senior, half junior gets swapped to senior
+      const seniorFromDeposit = halfAmount;
+      const seniorFromSwap = halfAmount * parseFloat(seniorPrice);
+      return (seniorFromDeposit + seniorFromSwap).toFixed(0);
+    } else {
+      // For max upside: half stays as junior, half senior gets swapped to junior
+      const juniorFromDeposit = halfAmount;
+      const juniorFromSwap = halfAmount * parseFloat(juniorPrice);
+      return (juniorFromDeposit + juniorFromSwap).toFixed(0);
+    }
+  };
 
   const handleDepositAndTrade = async (tradeType: 'fullCoverage' | 'fullRisk' | 'balanced') => {
     if (!depositAmount || parseFloat(depositAmount) <= 0) return;
@@ -254,36 +304,51 @@ const QuickTrade: React.FC = () => {
               <Button 
                 onClick={() => handleDepositAndTrade('fullCoverage')}
                 disabled={!isConnected || !depositAmount || parseFloat(depositAmount) <= 0 || isExecuting || Number(vaultInfo.currentPhase) !== Phase.DEPOSIT}
-                className="h-16 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
+                className="h-24 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
               >
                 <div className="flex flex-col items-center space-y-1">
-                  <Shield className="w-5 h-5" />
+                  <Shield className="w-6 h-6" />
                   <span>MAX SAFETY</span>
                   <span className="text-xs opacity-80">All → SENIOR</span>
+                  {depositAmount && parseFloat(depositAmount) > 0 && (
+                    <span className="text-xs text-blue-400 font-medium">
+                      ${depositAmount} → ${calculateConversionAmount(depositAmount, 'toSenior')} Senior. Insured.
+                    </span>
+                  )}
                 </div>
               </Button>
 
               <Button 
                 onClick={() => handleDepositAndTrade('fullRisk')}
                 disabled={!isConnected || !depositAmount || parseFloat(depositAmount) <= 0 || isExecuting || Number(vaultInfo.currentPhase) !== Phase.DEPOSIT}
-                className="h-16 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
+                className="h-24 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
               >
                 <div className="flex flex-col items-center space-y-1">
-                  <TrendingUp className="w-5 h-5" />
+                  <TrendingUp className="w-6 h-6" />
                   <span>MAX UPSIDE</span>
                   <span className="text-xs opacity-80">All → JUNIOR</span>
+                  {depositAmount && parseFloat(depositAmount) > 0 && (
+                    <span className="text-xs text-amber-400 font-medium">
+                      ${depositAmount} → ${calculateConversionAmount(depositAmount, 'toJunior')} Junior. Higher Risk. Higher Returns.
+                    </span>
+                  )}
                 </div>
               </Button>
 
               <Button 
                 onClick={() => handleDepositAndTrade('balanced')}
                 disabled={!isConnected || !depositAmount || parseFloat(depositAmount) <= 0 || isExecuting || Number(vaultInfo.currentPhase) !== Phase.DEPOSIT}
-                className="h-16 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
+                className="h-24 text-lg font-medium bg-slate-700 hover:bg-slate-600 transition-all duration-200 border border-slate-600"
               >
                 <div className="flex flex-col items-center space-y-1">
-                  <Scale className="w-5 h-5" />
+                  <Scale className="w-6 h-6" />
                   <span>BALANCED</span>
                   <span className="text-xs opacity-80">50/50 split</span>
+                  {depositAmount && parseFloat(depositAmount) > 0 && (
+                    <span className="text-xs text-purple-400 font-medium">
+                      ${depositAmount} → ${(parseFloat(depositAmount) / 2).toFixed(0)} Senior + ${(parseFloat(depositAmount) / 2).toFixed(0)} Junior. Half at Risk.
+                    </span>
+                  )}
                 </div>
               </Button>
             </div>

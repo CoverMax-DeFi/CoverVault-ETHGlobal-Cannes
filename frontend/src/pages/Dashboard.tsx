@@ -169,6 +169,12 @@ const Dashboard = () => {
           </Alert>
         )}
 
+
+        {/* Quick Trade - Hero Section */}
+        <div className="mb-8">
+          <QuickTrade />
+        </div>
+        
                 {/* Portfolio Overview */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
@@ -266,11 +272,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
           </div>
-        </div>
-
-        {/* Quick Trade - Hero Section */}
-        <div className="mb-8">
-          <QuickTrade />
         </div>
       </div>
     </div>
