@@ -4,7 +4,7 @@
 
 ## Overview
 
-CoverVault is a revolutionary insurance protocol that transforms traditional insurance through **tradeable risk tokens** and **yield-bearing collateral**. Users deposit yield-bearing assets (like aUSDC or cUSDT) and receive dual-tier risk tokens that can be traded on Uniswap. The more risk tokens sold in the market, the more insurance coverage is provided to the community.
+CoverVault is a revolutionary insurance protocol that transforms traditional insurance through **tradeable risk tokens** for **yield-bearing collateral**. Users deposit yield-bearing assets (like aUSDC or cUSDT) and receive dual-tier risk tokens that can be traded on Uniswap. The more risk tokens sold in the market, the more insurance coverage is provided to the community.
 
 ## 🧠 How It Works
 
@@ -15,7 +15,7 @@ CoverVault is a revolutionary insurance protocol that transforms traditional ins
    - **Senior Risk Tokens** (CV-SENIOR) - Lower risk, priority claims
    - **Junior Risk Tokens** (CV-JUNIOR) - Higher risk, subordinate claims
 3. **Trading Phase**: Risk tokens can be traded on Uniswap like any ERC20 token
-4. **Coverage Phase** (5 days): Active insurance period where claims can be submitted
+4. **Coverage Phase** (3 days): Active insurance period where claims can be submitted
 5. **Redemption Phase**: Token holders can redeem remaining tokens for underlying assets
 
 ### The Risk-Insurance Relationship
@@ -28,23 +28,17 @@ The core innovation is that **selling risk tokens = providing insurance coverage
 
 ### Example Scenarios
 
-#### Basic Insurance Flow
-```
-1. Alice deposits 1000 aUSDC → receives 500 CV-SENIOR + 500 CV-JUNIOR tokens
-2. Bob deposits 1000 aUSDC → receives 500 CV-SENIOR + 500 CV-JUNIOR tokens
-3. Bob sells 200 CV-SENIOR tokens to Charlie on Uniswap for USDC
-4. Pool: 2000 aUSDC | Outstanding tokens: 1800 total (800 CV-SENIOR + 1000 CV-JUNIOR)
-5. If insurance claims occur, remaining assets are shared proportionally among token holders
-```
-
 #### Risk Tier Trading (Advanced Strategy)
 ```
-1. Bob holds 500 CV-SENIOR + 500 CV-JUNIOR tokens (from 1000 aUSDC deposit)
-2. Bob wants more downside protection, so he trades on CV-SENIOR/CV-JUNIOR pool:
-   - Sells 200 CV-JUNIOR tokens → receives 190 CV-SENIOR tokens (5% discount)
-3. Bob now holds 690 CV-SENIOR + 300 CV-JUNIOR tokens (990 total)
-4. Result: Bob forfeited 10 tokens of potential upside for senior claim priority
-5. If claims happen: Bob's 690 senior tokens get paid before any junior tokens
+1. Alice deposits 1000 aUSDC → receives 500 CV-SENIOR + 500 CV-JUNIOR tokens
+2. Bob deposits 1000 cUSDT → receives 500 CV-SENIOR + 500 CV-JUNIOR tokens
+3. Bob wants more downside protection, so he trades on CV-SENIOR/CV-JUNIOR pool:
+   - Sells 200 CV-JUNIOR tokens → receives 190 CV-SENIOR tokens (5% lost in value)
+4. Bob now holds 690 CV-SENIOR + 300 CV-JUNIOR tokens (990 total)
+   - Result: Bob forfeited 10 tokens of potential upside for senior claim priority
+5. Alice see a opportunity to buy cheap CV-JUNIOR tokens that are redeemable to the same underlying token, so she buys the them. She now holds 310 CV-SENIOR + 700 CV-JUNIOR tokens (1010 total)
+6. If one of the underlying yield protocols get exploited: Bob's 690 senior tokens get paid before any junior tokens. He can withdraw up to 990 yield tokens.
+7. if there was no exploit: Alice's 310 senior tokens get paid before any junior tokens. She can withdraw up to 1010 yield tokens.
 ```
 
 ## 🏗️ Protocol Architecture
@@ -194,33 +188,29 @@ uniswapRouter.swapExactTokensForTokens(
 ### For Developers
 
 ```bash
-# Clone the repository
-git clone https://github.com/zalatar242/CoverVault.git
-cd CoverVault
-
 # Install dependencies
 npm install
 
 # Compile contracts
-npm run compile
+npx hardhat compile
 
 # Run tests
-npm run test
+npx hardhat test
 
 # Deploy to local network
-npm run deploy:localhost
+npx hardhat ignition deploy ignition/modules/RiskToken.ts --network localhost
 
 # Deploy to Flow testnet
-npm run deploy:flow-testnet
+npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flow-testnet
 ```
 
 ### For Users
 
-1. **Deposit Assets**: Call `depositAsset(asset, amount)` with your yield-bearing tokens
-2. **Receive Risk Tokens**: Get equal amounts of senior and junior tokens
-3. **Trade on Uniswap**: Buy/sell risk tokens to manage your exposure
-4. **Submit Claims**: Use `submitInsuranceClaim(asset, amount, evidence)` if needed
-5. **Redeem Tokens**: Call `redeemAllTokens()` to exit your position
+1. **Deposit Assets**: Call `depositAsset(asset, amount)` with aUSDC or cUSDT
+2. **Receive Risk Tokens**: Get equal amounts of CM-SENIOR and CM-JUNIOR tokens3. **Trade on 3. **Uniswap**: Buy/sell risk tokens to manage your exposure
+4. **Monitor Phases**: Track current phase using `getProtocolStatus()`
+5. **Withdraw During Claims**: Use `withdrawSeniorTokens()` during Claims phase
+6. **Final Withdrawal**: Call `withdrawAll()` during Final Claims phase
 
 ## 📈 Use Cases
 
@@ -235,7 +225,7 @@ npm run deploy:flow-testnet
 - **Custodial** services for institutional crypto exposure
 
 ### 3. Speculation and Trading
-- **Trade** insurance risk like any other asset class
+- **Trade** risk like any other asset class
 - **Arbitrage** between different risk levels and time periods
 - **Provide liquidity** to insurance markets for yield
 
@@ -245,32 +235,31 @@ npm run deploy:flow-testnet
 - **Dynamic Pricing**: Implement automated risk pricing mechanisms
 - **Cross-Chain**: Deploy on multiple blockchains for broader access
 - **Governance**: Introduce community governance for protocol parameters
-- **Advanced Claims**: Implement automated claim processing with oracles
 
 ## 📄 Contract Addresses
 
 ### Flow Testnet
-- **RiskVault**: `[To be deployed]`
-- **CV-SENIOR Token**: `[Auto-deployed by RiskVault]`
-- **CV-JUNIOR Token**: `[Auto-deployed by RiskVault]`
+- **RiskVault**: Successfully deployed (see deployment artifacts)
+- **CM-SENIOR Token**: Auto-deployed by RiskVault
+- **CM-JUNIOR Token**: Auto-deployed by RiskVault
 
-### Mainnet
-- **RiskVault**: `[To be deployed]`
-- **CV-SENIOR Token**: `[Auto-deployed by RiskVault]`
-- **CV-JUNIOR Token**: `[Auto-deployed by RiskVault]`
+### Development
+- **aUSDC Mock**: Available for testing
+- **cUSDT Mock**: Available for testing
+- **Uniswap V2 Contracts**: Included for potential trading integration
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our contributing guidelines and join our community:
-
-- **GitHub**: [Issues and PRs](https://github.com/zalatar242/CoverVault/issues)
-- **Discord**: [Community chat](https://discord.gg/covervault)
-- **Twitter**: [@CoverVault](https://twitter.com/covervault)
+Contributions welcome! This project includes:
+- **Hardhat development environment**
+- **TypeScript support**
+- **Comprehensive test suite**
+- **Deployment scripts**
 
 ## 📜 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License
 
 ---
 
-*CoverVault: Where insurance meets DeFi innovation* 🚀
+*CoverVault: Phase-based risk management with dual-tier tokens*
