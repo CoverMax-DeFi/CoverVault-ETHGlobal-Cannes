@@ -39,20 +39,6 @@ const Navbar: React.FC = () => {
             <Button
               variant="ghost"
               asChild
-              className={isActive("/insurance") ? "bg-slate-700 text-white hover:bg-slate-600" : "text-slate-300 hover:text-white hover:bg-slate-800"}
-            >
-              <Link to="/insurance">Try Demo</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              asChild
-              className={isActive("/liquidity") ? "bg-slate-700 text-white hover:bg-slate-600" : "text-slate-300 hover:text-white hover:bg-slate-800"}
-            >
-              <Link to="/liquidity">Liquidity</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              asChild
               className={isActive("/admin") ? "bg-red-600 hover:bg-red-700 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800"}
             >
               <Link to="/admin">Admin</Link>
