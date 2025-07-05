@@ -10,6 +10,13 @@
     "deploy:localhost": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network localhost",
     "deploy:flow-testnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowTestnet && npm run generate-config",
     "deploy:flow-mainnet": "npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flowMainnet && npm run generate-config",
+    "deploy:cross-chain:arb": "npx hardhat run scripts/deploy-cross-chain.ts --network arbitrumSepolia",
+    "deploy:cross-chain:base": "npx hardhat run scripts/deploy-cross-chain.ts --network baseSepolia",
+    "deploy:cross-chain:both": "npm run deploy:cross-chain:arb && npm run deploy:cross-chain:base",
+    "test:cross-chain:arb": "npx hardhat run scripts/test-cross-chain.ts --network arbitrumSepolia",
+    "test:cross-chain:base": "npx hardhat run scripts/test-cross-chain.ts --network baseSepolia",
+    "console:arb": "npx hardhat console --network arbitrumSepolia",
+    "console:base": "npx hardhat console --network baseSepolia",
     "generate-config": "node scripts/generate-frontend-config.js",
     "node": "npx hardhat node",
     "clean": "npx hardhat clean",
@@ -34,10 +41,15 @@
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
     "@onflow/fcl": "^1.19.0",
     "@onflow/flow-cadut": "^0.2.0",
+    "@layerzerolabs/ua-devtools-evm-hardhat": "^0.3.6",
+    "hardhat-deploy": "^0.11.45",
     "dotenv": "^17.0.1",
     "hardhat": "^2.25.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.3.0"
+    "@openzeppelin/contracts": "^5.3.0",
+    "@layerzerolabs/lz-evm-oapp-v2": "^2.3.3",
+    "@layerzerolabs/lz-definitions": "^2.3.3",
+    "@layerzerolabs/lz-v2-utilities": "^2.3.3"
   }
 }

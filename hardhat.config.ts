@@ -1,5 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
+import { HardhatNetworkUserConfig } from "hardhat/types";
 import "@nomicfoundation/hardhat-toolbox";
+import "@layerzerolabs/ua-devtools-evm-hardhat";
+import "hardhat-deploy";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -35,6 +38,18 @@ const config: HardhatUserConfig = {
       url: "http://127.0.0.1:8545",
       chainId: 1337,
     },
+    // Arbitrum Sepolia Testnet
+    arbitrumSepolia: {
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
+      chainId: 421614,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
+    // Base Sepolia Testnet
+    baseSepolia: {
+      url: "https://sepolia.base.org",
+      chainId: 84532,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
     // Flow EVM Testnet
     flowTestnet: {
       url: "https://testnet.evm.nodes.onflow.org",
@@ -49,11 +64,6 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 1000000000, // 1 gwei
     },
-    // Add other networks as needed
-    // sepolia: {
-    //   url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-    //   accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    // },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
