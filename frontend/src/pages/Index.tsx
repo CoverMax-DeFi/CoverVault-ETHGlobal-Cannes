@@ -10,10 +10,8 @@ import {
   Clock, 
   ArrowRight, 
   Zap,
-  Lock,
   BarChart3,
-  Globe,
-  Layers
+  Globe
 } from 'lucide-react';
 
 const Index = () => {
@@ -115,7 +113,7 @@ const Index = () => {
                 </Link>
               </Button>
               <Button size="lg" asChild className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 hover:border-slate-500 text-lg px-8 py-6">
-                <Link >
+                <Link to="/insurance">
                   Learn More
                 </Link>
               </Button>

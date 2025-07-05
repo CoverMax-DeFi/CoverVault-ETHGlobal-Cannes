@@ -17,7 +17,6 @@ const InsuranceCalculator: React.FC = () => {
     balances,
     depositAsset, 
     withdraw, 
-    withdrawSeniorTokens, 
     withdrawAll, 
     emergencyWithdraw 
   } = useWeb3();

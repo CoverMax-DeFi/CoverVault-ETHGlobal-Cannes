@@ -325,4 +325,4 @@ const QuickTrade: React.FC = () => {
   );
 };
 
-export default QuickTrade;
+export default React.memo(QuickTrade);

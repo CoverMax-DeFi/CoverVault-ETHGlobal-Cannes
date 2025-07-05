@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import Navbar from '@/components/Navbar';
 import PhaseDisplay from '@/components/PhaseDisplay';
@@ -792,4 +792,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default React.memo(Dashboard);

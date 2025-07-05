@@ -1,17 +1,5 @@
-import React from 'react';
 import Navbar from '@/components/Navbar';
 import InsuranceCalculator from '@/components/InsuranceCalculator';
-import PhaseDisplay from '@/components/PhaseDisplay';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Shield, 
-  TrendingUp, 
-  Calculator,
-  ArrowRight
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 
 const Insurance = () => {
   return (
