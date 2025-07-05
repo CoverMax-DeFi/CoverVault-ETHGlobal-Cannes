@@ -99,6 +99,10 @@ interface Web3ContextType {
   getPairReserves: (
     pairAddress: string
   ) => Promise<{ reserve0: bigint; reserve1: bigint }>;
+
+  getTokenBalance: (
+    tokenAddress: string
+  ) => Promise<bigint>;
 }
 
 const Web3Context = createContext<Web3ContextType>({
@@ -143,6 +147,7 @@ const Web3Context = createContext<Web3ContextType>({
   getAmountsOut: async () => "0",
   addLiquidity: async () => {},
   getPairReserves: async () => ({ reserve0: 0n, reserve1: 0n }),
+  getTokenBalance: async () => 0n,
 });
 
 // Inner provider that uses Privy hooks
@@ -674,6 +679,19 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
       }
     },
   
+    getTokenBalance: async (tokenAddress: string): Promise<bigint> => {
+      if (!provider || !address) return 0n;
+
+      try {
+        const tokenContract = new Contract(tokenAddress, ERC20_ABI, provider);
+        const balance = await tokenContract.balanceOf(address);
+        return balance;
+      } catch (error) {
+        console.error('Error getting token balance:', error);
+        return 0n;
+      }
+    },
+
     addLiquidity: async (tokenAAmount: string, tokenBAmount: string, tokenA: string, tokenB: string) => {
       if (!signer || !address) {
         toast.error('Please connect your wallet');

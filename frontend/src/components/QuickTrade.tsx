@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWeb3 } from '@/context/PrivyWeb3Context';
 import { Shield, TrendingUp, Scale, Zap, DollarSign, Droplets, AlertCircle } from 'lucide-react';
 import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
+import { Contract } from 'ethers';
 
 type TradeIntent = 'safety' | 'upside' | 'equalize' | 'fullCoverage' | 'fullRisk' | 'balanced' | 'maxSafety' | 'maxUpside' | 'addLiquidity';
 
@@ -24,6 +25,7 @@ const QuickTrade: React.FC = () => {
     addLiquidity,
     refreshData,
     getPairReserves,
+    getTokenBalance,
   } = useWeb3();
 
   const [intent, setIntent] = useState<TradeIntent>('fullCoverage');
@@ -87,22 +89,22 @@ const QuickTrade: React.FC = () => {
       // First, deposit to get tokens
       await depositAsset(depositAssetType, depositAmount);
       
-      // Wait a moment for the deposit to be processed and refresh balances
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await refreshData();
-      
       if (tradeType === 'fullCoverage') {
-        // Convert all JUNIOR tokens to SENIOR
-        const juniorBalance = Number(balances.juniorTokens) / 1e18;
-        console.log('Junior balance after deposit:', juniorBalance);
-        console.log('Raw junior token balance:', balances.juniorTokens);
+        // Get fresh junior token balance directly from blockchain
+        const freshJuniorBalance = await getTokenBalance(juniorTokenAddress!);
+        const juniorBalanceWei = Number(freshJuniorBalance);
+        const juniorBalance = juniorBalanceWei / 1e18;
         
-        // Only proceed if balance is significant (more than 0.000001)
-        if (juniorBalance > 0.000001) {
-          console.log('Proceeding with swap, balance is significant');
+        console.log('Fresh junior balance from blockchain:', juniorBalance);
+        console.log('Raw fresh junior token balance:', freshJuniorBalance);
+        console.log('Stale state balance was:', Number(balances.juniorTokens) / 1e18);
+        
+        // Only proceed if we have meaningful junior tokens (more than 0.001)
+        if (juniorBalance > 0.001) {
+          console.log('Proceeding with swap, balance is:', juniorBalance, 'tokens');
           const path = [juniorTokenAddress!, seniorTokenAddress!];
-          // Format to avoid scientific notation
           const balanceString = juniorBalance.toFixed(18);
+          
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
           console.log('Swapping', balanceString, 'JUNIOR for minimum', minOutput, 'SENIOR');
@@ -111,16 +113,26 @@ const QuickTrade: React.FC = () => {
           console.log('Junior balance too small to swap:', juniorBalance);
         }
       } else if (tradeType === 'fullRisk') {
-        // Convert all SENIOR tokens to JUNIOR
-        const seniorBalance = Number(balances.seniorTokens) / 1e18;
-        // Only proceed if balance is significant (more than 0.000001)
-        if (seniorBalance > 0.000001) {
+        // Get fresh senior token balance directly from blockchain
+        const freshSeniorBalance = await getTokenBalance(seniorTokenAddress!);
+        const seniorBalanceWei = Number(freshSeniorBalance);
+        const seniorBalance = seniorBalanceWei / 1e18;
+        
+        console.log('Fresh senior balance from blockchain:', seniorBalance);
+        console.log('Stale state balance was:', Number(balances.seniorTokens) / 1e18);
+        
+        // Only proceed if we have meaningful senior tokens (more than 0.001)
+        if (seniorBalance > 0.001) {
+          console.log('Proceeding with swap, balance is:', seniorBalance, 'tokens');
           const path = [seniorTokenAddress!, juniorTokenAddress!];
-          // Format to avoid scientific notation
           const balanceString = seniorBalance.toFixed(18);
+          
           const estimate = await getAmountsOut(balanceString, path);
           const minOutput = (parseFloat(estimate) * 0.95).toFixed(18);
+          console.log('Swapping', balanceString, 'SENIOR for minimum', minOutput, 'JUNIOR');
           await swapExactTokensForTokens(balanceString, minOutput, path);
+        } else {
+          console.log('Senior balance too small to swap:', seniorBalance);
         }
       }
       // For 'balanced', no additional trading needed - deposit gives 50/50 split
@@ -380,7 +392,7 @@ const QuickTrade: React.FC = () => {
       </Card>
 
       {/* Smart Liquidity Suggestion */}
-      {showLiquiditySuggestion && (
+      {showLiquiditySuggestion && seniorValue > 0.01 && juniorValue > 0.01 && (
         <Card className="bg-slate-800/50 border-blue-600/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-blue-400 flex items-center">
