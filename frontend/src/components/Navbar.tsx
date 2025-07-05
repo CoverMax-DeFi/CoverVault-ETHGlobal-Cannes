@@ -1,0 +1,101 @@
+import React from 'react';
+import Logo from '@/assets/images/CoverVault.svg';
+import { Button } from '@/components/ui/button';
+import { Link, useLocation } from 'react-router-dom';
+import { useWeb3 } from '@/context/Web3Context';
+
+const Navbar: React.FC = () => {
+  const location = useLocation();
+  const { isConnected, address, connectWallet, disconnectWallet } = useWeb3();
+
+  // Helper function to determine if a route is active
+  const isActive = (path: string) => location.pathname === path;
+  
+  // Format address for display
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  return (
+    <nav className="border-b border-gray-200 bg-white py-4 px-6 sticky top-0 z-10">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
+            <img src={Logo} alt="CoverVault Logo" className="h-8 w-auto" />
+            <span className="font-bold text-xl text-gray-800">CoverVault</span>
+          </Link>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {/* Main Navigation Buttons */}
+          <div className="hidden md:flex items-center space-x-2">
+            <Button
+              variant={isActive("/dashboard") ? "default" : "ghost"}
+              asChild
+              className={isActive("/dashboard") ? "bg-defi-blue hover:bg-defi-darkblue" : ""}
+            >
+              <Link to="/dashboard">Dashboard</Link>
+            </Button>
+            <Button
+              variant={isActive("/insurance") ? "default" : "ghost"}
+              asChild
+              className={isActive("/insurance") ? "bg-defi-blue hover:bg-defi-darkblue" : ""}
+            >
+              <Link to="/insurance">Protection</Link>
+            </Button>
+            <Button
+              variant={isActive("/liquidity") ? "default" : "ghost"}
+              asChild
+              className={isActive("/liquidity") ? "bg-defi-blue hover:bg-defi-darkblue" : ""}
+            >
+              <Link to="/liquidity">Liquidity</Link>
+            </Button>
+            <Button
+              variant={isActive("/admin") ? "default" : "ghost"}
+              asChild
+              className={isActive("/admin") ? "bg-red-600 hover:bg-red-700" : ""}
+            >
+              <Link to="/admin">Admin</Link>
+            </Button>
+          </div>
+
+          {/* Connect Wallet Button */}
+          {!isConnected ? (
+            <Button
+              variant="outline"
+              className="text-gray-700 hover:bg-gray-100 px-4 py-2 text-sm font-medium border-gray-300"
+              onClick={connectWallet}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H13.5m-9 0a2.25 2.25 0 0 0-2.25 2.25m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+              </svg>
+              Connect Wallet
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="text-gray-700 hover:bg-gray-100 px-4 py-2 text-sm font-medium border-gray-300"
+              onClick={disconnectWallet}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H13.5m-9 0a2.25 2.25 0 0 0-2.25 2.25m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+              </svg>
+              {formatAddress(address!)}
+            </Button>
+          )}
+
+          {/* Mobile menu button (you can expand this for mobile navigation) */}
+          <div className="md:hidden">
+            <Button variant="ghost" size="sm">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;

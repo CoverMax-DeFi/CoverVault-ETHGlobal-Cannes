@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useWeb3 } from '@/context/Web3Context';
 import Logo from '@/assets/images/CoverVault.svg';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,11 +17,11 @@ import {
 } from 'lucide-react';
 
 const Index = () => {
+  const { isConnected, vaultInfo } = useWeb3();
+
   // Demo stats
-  const totalValueLocked = "0";
+  const totalValueLocked = ((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(0);
   const estimatedAPY = "12.5"; // Demo APY
-  const isConnected = false;
-  const emergencyMode = false;
 
   const features = [
     {
@@ -49,7 +50,7 @@ const Index = () => {
     { label: "Total Value Locked", value: `$${totalValueLocked || "0"}`, suffix: "" },
     { label: "Est. APY", value: estimatedAPY, suffix: "%" },
     { label: "Protocol Phases", value: "4", suffix: "" },
-    { label: "Emergency Mode", value: emergencyMode ? "Active" : "Ready", suffix: "" }
+    { label: "Emergency Mode", value: vaultInfo.emergencyMode ? "Active" : "Ready", suffix: "" }
   ];
 
   return (

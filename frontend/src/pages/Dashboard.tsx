@@ -1,0 +1,405 @@
+import React, { useEffect, useState } from 'react';
+import { useWeb3 } from '@/context/Web3Context';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Navbar from '@/components/Navbar';
+import PhaseDisplay from '@/components/PhaseDisplay';
+import TokenBalance from '@/components/TokenBalance';
+import ActionCard from '@/components/ActionCard';
+import StatCard from '@/components/StatCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Info, DollarSign, Coins, Shield, AlertCircle } from 'lucide-react';
+import { Phase } from '@/config/contracts';
+import { ethers } from 'ethers';
+
+const Dashboard = () => {
+  const {
+    isConnected,
+    address,
+    balances,
+    vaultInfo,
+    depositAsset,
+    withdraw,
+    withdrawSeniorTokens,
+    withdrawAll,
+    emergencyWithdraw,
+    calculateWithdrawalAmounts,
+  } = useWeb3();
+
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositAssetType, setDepositAssetType] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
+  const [withdrawSeniorAmount, setWithdrawSeniorAmount] = useState('');
+  const [withdrawJuniorAmount, setWithdrawJuniorAmount] = useState('');
+  const [emergencyAmount, setEmergencyAmount] = useState('');
+  const [preferredAsset, setPreferredAsset] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
+  const [estimatedWithdrawal, setEstimatedWithdrawal] = useState({ aUSDC: '0', cUSDT: '0' });
+
+  // Format token amounts for display
+  const formatTokenAmount = (amount: bigint) => {
+    return ethers.formatEther(amount);
+  };
+
+  // Update withdrawal estimates
+  useEffect(() => {
+    const updateEstimates = async () => {
+      if (!withdrawSeniorAmount && !withdrawJuniorAmount) {
+        setEstimatedWithdrawal({ aUSDC: '0', cUSDT: '0' });
+        return;
+      }
+
+      const senior = withdrawSeniorAmount || '0';
+      const junior = withdrawJuniorAmount || '0';
+      const amounts = await calculateWithdrawalAmounts(senior, junior);
+      
+      setEstimatedWithdrawal({
+        aUSDC: ethers.formatEther(amounts.aUSDC),
+        cUSDT: ethers.formatEther(amounts.cUSDT),
+      });
+    };
+
+    updateEstimates();
+  }, [withdrawSeniorAmount, withdrawJuniorAmount, calculateWithdrawalAmounts]);
+
+  const handleDeposit = async () => {
+    if (!depositAmount || parseFloat(depositAmount) <= 0) return;
+    await depositAsset(depositAssetType, depositAmount);
+    setDepositAmount('');
+  };
+
+  const handleWithdraw = async () => {
+    const senior = withdrawSeniorAmount || '0';
+    const junior = withdrawJuniorAmount || '0';
+    if (parseFloat(senior) <= 0 && parseFloat(junior) <= 0) return;
+    await withdraw(senior, junior);
+    setWithdrawSeniorAmount('');
+    setWithdrawJuniorAmount('');
+  };
+
+  const handleEmergencyWithdraw = async () => {
+    if (!emergencyAmount || parseFloat(emergencyAmount) <= 0) return;
+    await emergencyWithdraw(emergencyAmount, preferredAsset);
+    setEmergencyAmount('');
+  };
+
+  // Calculate total portfolio value
+  const totalPortfolioValue = 
+    parseFloat(formatTokenAmount(balances.aUSDC)) +
+    parseFloat(formatTokenAmount(balances.cUSDT)) +
+    parseFloat(formatTokenAmount(balances.seniorTokens)) +
+    parseFloat(formatTokenAmount(balances.juniorTokens));
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">CoverVault Dashboard</h1>
+          <p className="text-gray-600">
+            Manage your insured deposits and track protocol performance
+          </p>
+        </div>
+
+        {/* Connection Status */}
+        {!isConnected && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please connect your wallet to interact with the protocol
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Phase Display */}
+        <div className="mb-8">
+          <PhaseDisplay />
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Total Portfolio"
+            value={`$${totalPortfolioValue.toFixed(2)}`}
+            icon={<DollarSign className="h-5 w-5" />}
+            trend={{ value: 0, isPositive: true }}
+          />
+          <StatCard
+            title="CM-SENIOR Tokens"
+            value={formatTokenAmount(balances.seniorTokens)}
+            icon={<Shield className="h-5 w-5" />}
+            subtitle="Priority claims"
+          />
+          <StatCard
+            title="CM-JUNIOR Tokens"
+            value={formatTokenAmount(balances.juniorTokens)}
+            icon={<Coins className="h-5 w-5" />}
+            subtitle="Higher yield potential"
+          />
+          <StatCard
+            title="Vault TVL"
+            value={`$${((Number(vaultInfo.aUSDCBalance) + Number(vaultInfo.cUSDTBalance)) / 1e18).toFixed(2)}`}
+            icon={<DollarSign className="h-5 w-5" />}
+            subtitle="Total Value Locked"
+          />
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="deposit" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="deposit">Deposit</TabsTrigger>
+            <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+            <TabsTrigger value="balances">Balances</TabsTrigger>
+          </TabsList>
+
+          {/* Deposit Tab */}
+          <TabsContent value="deposit">
+            <Card>
+              <CardHeader>
+                <CardTitle>Deposit Assets</CardTitle>
+                <CardDescription>
+                  Deposit aUSDC or cUSDT to receive equal amounts of CM-SENIOR and CM-JUNIOR tokens
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {vaultInfo.currentPhase !== Phase.DEPOSIT ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Deposits are only allowed during the Deposit phase. Current phase: {Phase[vaultInfo.currentPhase]}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    <div>
+                      <Label>Select Asset</Label>
+                      <RadioGroup value={depositAssetType} onValueChange={(v) => setDepositAssetType(v as 'aUSDC' | 'cUSDT')}>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="aUSDC" id="aUSDC" />
+                          <Label htmlFor="aUSDC">aUSDC (Balance: {formatTokenAmount(balances.aUSDC)})</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="cUSDT" id="cUSDT" />
+                          <Label htmlFor="cUSDT">cUSDT (Balance: {formatTokenAmount(balances.cUSDT)})</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div>
+                      <Label htmlFor="deposit-amount">Amount</Label>
+                      <Input
+                        id="deposit-amount"
+                        type="number"
+                        placeholder="0.0"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        disabled={!isConnected}
+                      />
+                    </div>
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        You will receive {depositAmount || '0'} CM-SENIOR and {depositAmount || '0'} CM-JUNIOR tokens
+                      </AlertDescription>
+                    </Alert>
+                    <Button 
+                      onClick={handleDeposit} 
+                      disabled={!isConnected || !depositAmount || vaultInfo.currentPhase !== Phase.DEPOSIT}
+                      className="w-full"
+                    >
+                      Deposit {depositAssetType}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Withdraw Tab */}
+          <TabsContent value="withdraw">
+            <div className="space-y-6">
+              {/* Regular Withdrawal */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Withdraw Tokens</CardTitle>
+                  <CardDescription>
+                    Withdraw your tokens based on the current phase rules
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {vaultInfo.currentPhase === Phase.CLAIMS && (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        Claims phase: Only senior token withdrawals are allowed
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <div>
+                    <Label htmlFor="senior-amount">CM-SENIOR Amount</Label>
+                    <Input
+                      id="senior-amount"
+                      type="number"
+                      placeholder="0.0"
+                      value={withdrawSeniorAmount}
+                      onChange={(e) => setWithdrawSeniorAmount(e.target.value)}
+                      disabled={!isConnected}
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Balance: {formatTokenAmount(balances.seniorTokens)}
+                    </p>
+                  </div>
+
+                  {vaultInfo.currentPhase !== Phase.CLAIMS && (
+                    <div>
+                      <Label htmlFor="junior-amount">CM-JUNIOR Amount</Label>
+                      <Input
+                        id="junior-amount"
+                        type="number"
+                        placeholder="0.0"
+                        value={withdrawJuniorAmount}
+                        onChange={(e) => setWithdrawJuniorAmount(e.target.value)}
+                        disabled={!isConnected}
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Balance: {formatTokenAmount(balances.juniorTokens)}
+                      </p>
+                    </div>
+                  )}
+
+                  {(withdrawSeniorAmount || withdrawJuniorAmount) && (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        Estimated withdrawal: {estimatedWithdrawal.aUSDC} aUSDC + {estimatedWithdrawal.cUSDT} cUSDT
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={handleWithdraw} 
+                      disabled={!isConnected || (!withdrawSeniorAmount && !withdrawJuniorAmount)}
+                      className="w-full"
+                    >
+                      Withdraw
+                    </Button>
+
+                    {vaultInfo.currentPhase === Phase.FINAL_CLAIMS && (
+                      <Button 
+                        onClick={withdrawAll} 
+                        disabled={!isConnected}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Withdraw All
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Emergency Withdrawal */}
+              {vaultInfo.emergencyMode && (
+                <Card className="border-red-200">
+                  <CardHeader>
+                    <CardTitle className="text-red-600">Emergency Withdrawal</CardTitle>
+                    <CardDescription>
+                      Emergency mode is active. Senior token holders can withdraw with preferred asset.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="emergency-amount">CM-SENIOR Amount</Label>
+                      <Input
+                        id="emergency-amount"
+                        type="number"
+                        placeholder="0.0"
+                        value={emergencyAmount}
+                        onChange={(e) => setEmergencyAmount(e.target.value)}
+                        disabled={!isConnected}
+                      />
+                    </div>
+                    <div>
+                      <Label>Preferred Asset</Label>
+                      <RadioGroup value={preferredAsset} onValueChange={(v) => setPreferredAsset(v as 'aUSDC' | 'cUSDT')}>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="aUSDC" id="em-aUSDC" />
+                          <Label htmlFor="em-aUSDC">aUSDC</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="cUSDT" id="em-cUSDT" />
+                          <Label htmlFor="em-cUSDT">cUSDT</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <Button 
+                      onClick={handleEmergencyWithdraw} 
+                      disabled={!isConnected || !emergencyAmount}
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      Emergency Withdraw
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Balances Tab */}
+          <TabsContent value="balances">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>CM Tokens</CardTitle>
+                  <CardDescription>Your CoverVault token balances</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <TokenBalance
+                    name="CM-SENIOR"
+                    amount={parseFloat(formatTokenAmount(balances.seniorTokens))}
+                    price={1.0}
+                    icon={<Shield className="h-6 w-6 text-blue-500" />}
+                  />
+                  <TokenBalance
+                    name="CM-JUNIOR"
+                    amount={parseFloat(formatTokenAmount(balances.juniorTokens))}
+                    price={1.0}
+                    icon={<Coins className="h-6 w-6 text-green-500" />}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Yield Assets</CardTitle>
+                  <CardDescription>Your underlying asset balances</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <TokenBalance
+                    name="aUSDC"
+                    amount={parseFloat(formatTokenAmount(balances.aUSDC))}
+                    price={1.0}
+                    icon={<DollarSign className="h-6 w-6 text-blue-500" />}
+                  />
+                  <TokenBalance
+                    name="cUSDT"
+                    amount={parseFloat(formatTokenAmount(balances.cUSDT))}
+                    price={1.0}
+                    icon={<DollarSign className="h-6 w-6 text-green-500" />}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
