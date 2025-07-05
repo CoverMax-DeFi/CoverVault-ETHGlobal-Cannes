@@ -10,8 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, ArrowUpDown, TrendingUp, Minus, Activity, Settings, BarChart3 } from 'lucide-react';
+import { Info, DollarSign, Coins, Shield, AlertCircle, RefreshCw, Droplets, Minus, Activity, Settings, BarChart3 } from 'lucide-react';
 import { Phase, CONTRACT_ADDRESSES } from '@/config/contracts';
 import { ethers } from 'ethers';
 
@@ -23,23 +22,18 @@ const Advanced = () => {
     depositAsset,
     withdraw,
     emergencyWithdraw,
-    calculateWithdrawalAmounts,
     getAmountsOut,
     seniorTokenAddress,
     juniorTokenAddress,
     addLiquidity,
     removeLiquidity,
-    swapExactTokensForTokens,
     getPairReserves,
   } = useWeb3();
 
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAssetType, setDepositAssetType] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
-  const [withdrawSeniorAmount, setWithdrawSeniorAmount] = useState('');
-  const [withdrawJuniorAmount, setWithdrawJuniorAmount] = useState('');
   const [emergencyAmount, setEmergencyAmount] = useState('');
   const [preferredAsset, setPreferredAsset] = useState<'aUSDC' | 'cUSDT'>('aUSDC');
-  const [estimatedWithdrawal, setEstimatedWithdrawal] = useState({ aUSDC: '0', cUSDT: '0' });
   const [seniorPrice, setSeniorPrice] = useState('0.98');
   const [juniorPrice, setJuniorPrice] = useState('1.05');
   const [pricesLoading, setPricesLoading] = useState(false);
@@ -52,6 +46,7 @@ const Advanced = () => {
   const [liquidityJuniorAmount, setLiquidityJuniorAmount] = useState('');
   const [removeLiquidityAmount, setRemoveLiquidityAmount] = useState('');
   const [showLiquiditySuggestion, setShowLiquiditySuggestion] = useState(false);
+  const [liquidityMode, setLiquidityMode] = useState<'manual' | 'optimal'>('optimal');
   
   // New redemption state
   const [selectedWithdrawAsset, setSelectedWithdrawAsset] = useState<'aUSDC' | 'cUSDT' | null>(null);
@@ -151,26 +146,6 @@ const Advanced = () => {
     return () => clearInterval(interval);
   }, [seniorTokenAddress, juniorTokenAddress, getAmountsOut, getPairReserves]);
 
-  // Update withdrawal estimates
-  useEffect(() => {
-    const updateEstimates = async () => {
-      if (!withdrawSeniorAmount && !withdrawJuniorAmount) {
-        setEstimatedWithdrawal({ aUSDC: '0', cUSDT: '0' });
-        return;
-      }
-
-      const senior = withdrawSeniorAmount || '0';
-      const junior = withdrawJuniorAmount || '0';
-      const amounts = await calculateWithdrawalAmounts(senior, junior);
-      
-      setEstimatedWithdrawal({
-        aUSDC: ethers.formatEther(amounts.aUSDC),
-        cUSDT: ethers.formatEther(amounts.cUSDT),
-      });
-    };
-
-    updateEstimates();
-  }, [withdrawSeniorAmount, withdrawJuniorAmount, calculateWithdrawalAmounts]);
 
   // Calculate optimal token amounts when user selects asset and amount
   useEffect(() => {
@@ -229,14 +204,6 @@ const Advanced = () => {
     setDepositAmount('');
   };
 
-  const handleWithdraw = async () => {
-    const senior = withdrawSeniorAmount || '0';
-    const junior = withdrawJuniorAmount || '0';
-    if (parseFloat(senior) <= 0 && parseFloat(junior) <= 0) return;
-    await withdraw(senior, junior);
-    setWithdrawSeniorAmount('');
-    setWithdrawJuniorAmount('');
-  };
 
   const handleOptimalWithdraw = async () => {
     if (!selectedWithdrawAsset || !withdrawAssetAmount || parseFloat(withdrawAssetAmount) <= 0) return;
@@ -265,6 +232,40 @@ const Advanced = () => {
     setLiquidityJuniorAmount('');
     setShowLiquiditySuggestion(false);
   };
+
+  const handleOptimalLiquidity = () => {
+    const seniorBalance = parseFloat(formatTokenAmount(balances.seniorTokens));
+    const juniorBalance = parseFloat(formatTokenAmount(balances.juniorTokens));
+    const poolSenior = parseFloat(poolReserves.senior);
+    const poolJunior = parseFloat(poolReserves.junior);
+    
+    if (poolSenior > 0 && poolJunior > 0) {
+      // Calculate optimal amounts based on pool ratio
+      const poolRatio = poolSenior / poolJunior;
+      const userRatio = seniorBalance / juniorBalance;
+      
+      let optimalSenior: number, optimalJunior: number;
+      
+      if (userRatio > poolRatio) {
+        // User has more senior relative to pool ratio
+        optimalJunior = juniorBalance;
+        optimalSenior = Math.min(optimalJunior * poolRatio, seniorBalance);
+      } else {
+        // User has more junior relative to pool ratio
+        optimalSenior = seniorBalance;
+        optimalJunior = Math.min(optimalSenior / poolRatio, juniorBalance);
+      }
+      
+      setLiquiditySeniorAmount(optimalSenior.toFixed(6));
+      setLiquidityJuniorAmount(optimalJunior.toFixed(6));
+    } else {
+      // If no pool reserves, use equal amounts
+      const maxAmount = Math.min(seniorBalance, juniorBalance);
+      setLiquiditySeniorAmount(maxAmount.toFixed(6));
+      setLiquidityJuniorAmount(maxAmount.toFixed(6));
+    }
+  };
+
 
   const handleRemoveLiquidity = async () => {
     if (!removeLiquidityAmount || !seniorTokenAddress || !juniorTokenAddress) return;
@@ -548,60 +549,158 @@ const Advanced = () => {
             {/* Add Liquidity */}
             <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">Add Liquidity</CardTitle>
+                <CardTitle className="text-white flex items-center">
+                  <Droplets className="w-5 h-5 mr-2" />
+                  Add Liquidity
+                </CardTitle>
                 <CardDescription className="text-slate-300">
-                  Provide liquidity to the SENIOR/JUNIOR pool to earn trading fees
+                  Provide liquidity to earn trading fees. Choose optimal or manual mode.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-slate-300">SENIOR Amount</Label>
-                    <Input
-                      type="number"
-                      placeholder="0.0"
-                      value={liquiditySeniorAmount}
-                      onChange={(e) => setLiquiditySeniorAmount(e.target.value)}
-                      disabled={!isConnected}
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                    />
-                    <p className="text-sm text-slate-400 mt-1">
-                      Balance: {formatTokenAmount(balances.seniorTokens)}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-slate-300">JUNIOR Amount</Label>
-                    <Input
-                      type="number"
-                      placeholder="0.0"
-                      value={liquidityJuniorAmount}
-                      onChange={(e) => setLiquidityJuniorAmount(e.target.value)}
-                      disabled={!isConnected}
-                      className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
-                    />
-                    <p className="text-sm text-slate-400 mt-1">
-                      Balance: {formatTokenAmount(balances.juniorTokens)}
-                    </p>
+                {/* Mode Selection */}
+                <div>
+                  <Label className="text-slate-300 mb-3 block">Liquidity Mode</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setLiquidityMode('optimal')}
+                      className={`p-3 rounded-lg border transition-all ${
+                        liquidityMode === 'optimal'
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                          : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="font-semibold">Optimal</div>
+                        <div className="text-sm opacity-80">Auto-calculate amounts</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setLiquidityMode('manual')}
+                      className={`p-3 rounded-lg border transition-all ${
+                        liquidityMode === 'manual'
+                          ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                          : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="font-semibold">Manual</div>
+                        <div className="text-sm opacity-80">Set custom amounts</div>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
-                {liquiditySeniorAmount && liquidityJuniorAmount && (
-                  <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      You'll receive LP tokens proportional to your share of the pool
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {liquidityMode === 'optimal' ? (
+                  <div className="space-y-4">
+                    {/* Available Tokens Display */}
+                    <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">Available tokens:</p>
+                          <p className="text-slate-300 text-sm">
+                            {seniorTokenAmount.toFixed(4)} SENIOR + {juniorTokenAmount.toFixed(4)} JUNIOR
+                          </p>
+                          <p className="text-slate-300 text-xs opacity-80">
+                            Will add optimal amounts to match pool ratio
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                <Button
-                  onClick={handleAddLiquidity}
-                  disabled={!isConnected || !liquiditySeniorAmount || !liquidityJuniorAmount || parseFloat(liquiditySeniorAmount) <= 0 || parseFloat(liquidityJuniorAmount) <= 0}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                >
-                  Add Liquidity
-                </Button>
+                    {/* Quick Actions */}
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleOptimalLiquidity}
+                        disabled={!isConnected || (seniorTokenAmount <= 0 && juniorTokenAmount <= 0)}
+                        className="w-full bg-blue-600/20 border border-blue-500 text-blue-300 hover:bg-blue-600/30"
+                      >
+                        Preview Optimal Amounts
+                      </Button>
+                      
+                      {(liquiditySeniorAmount || liquidityJuniorAmount) && (
+                        <Button
+                          onClick={handleAddLiquidity}
+                          disabled={!isConnected || !liquiditySeniorAmount || !liquidityJuniorAmount}
+                          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        >
+                          <Droplets className="w-4 h-4 mr-2" />
+                          Add Liquidity
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Show calculated amounts */}
+                    {(liquiditySeniorAmount || liquidityJuniorAmount) && (
+                      <Alert className="bg-blue-900/20 border-blue-600 text-blue-300">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="space-y-1">
+                            <div className="font-semibold">Ready to add:</div>
+                            <div className="text-sm">
+                              {liquiditySeniorAmount} SENIOR + {liquidityJuniorAmount} JUNIOR
+                            </div>
+                            <div className="text-xs opacity-80">
+                              These amounts match the current pool ratio for optimal liquidity provision
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Manual Input */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-slate-300">SENIOR Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.0"
+                          value={liquiditySeniorAmount}
+                          onChange={(e) => setLiquiditySeniorAmount(e.target.value)}
+                          disabled={!isConnected}
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
+                        />
+                        <p className="text-sm text-slate-400 mt-1">
+                          Balance: {formatTokenAmount(balances.seniorTokens)}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <Label className="text-slate-300">JUNIOR Amount</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.0"
+                          value={liquidityJuniorAmount}
+                          onChange={(e) => setLiquidityJuniorAmount(e.target.value)}
+                          disabled={!isConnected}
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400"
+                        />
+                        <p className="text-sm text-slate-400 mt-1">
+                          Balance: {formatTokenAmount(balances.juniorTokens)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {liquiditySeniorAmount && liquidityJuniorAmount && (
+                      <Alert className="bg-slate-700/50 border-slate-600 text-slate-300">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          You'll receive LP tokens proportional to your share of the pool
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <Button
+                      onClick={handleAddLiquidity}
+                      disabled={!isConnected || !liquiditySeniorAmount || !liquidityJuniorAmount || parseFloat(liquiditySeniorAmount) <= 0 || parseFloat(liquidityJuniorAmount) <= 0}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      Add Liquidity
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -644,7 +743,7 @@ const Advanced = () => {
                 <Button
                   onClick={handleRemoveLiquidity}
                   disabled={!isConnected || !removeLiquidityAmount || parseFloat(removeLiquidityAmount) <= 0}
-                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
                   Remove Liquidity
                 </Button>
