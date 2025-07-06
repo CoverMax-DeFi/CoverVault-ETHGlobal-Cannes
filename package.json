@@ -18,7 +18,8 @@
     "console": "npx hardhat console",
     "console:flow-testnet": "npx hardhat console --network flowTestnet",
     "verify:flow-testnet": "npx hardhat verify --network flowTestnet",
-    "verify:flow-all": "node scripts/verify-flow-contracts.js"
+    "verify:flow-all": "node scripts/verify-flow-contracts.js",
+    "update-frontend-config": "ts-node scripts/update-frontend-config.ts"
   },
   "repository": {
     "type": "git",

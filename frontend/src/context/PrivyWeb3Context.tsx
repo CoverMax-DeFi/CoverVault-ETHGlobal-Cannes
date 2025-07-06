@@ -1060,13 +1060,35 @@ const InnerWeb3Provider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
       if (allowanceA < amountADesired) {
         const approveTx = await tokenAContract.approve(routerAddress, amountADesired);
-        toast.info(`Approving ${await tokenAContract.symbol()}...`);
+        let symbolA = 'Token A';
+        try {
+          symbolA = await tokenAContract.symbol();
+        } catch (e) {
+          // Fallback for contracts without symbol() function
+          if (tokenA === getCurrentChainAddress(ContractName.SENIOR_TOKEN)) {
+            symbolA = 'SENIOR';
+          } else if (tokenA === getCurrentChainAddress(ContractName.JUNIOR_TOKEN)) {
+            symbolA = 'JUNIOR';
+          }
+        }
+        toast.info(`Approving ${symbolA}...`);
         await approveTx.wait();
       }
 
       if (allowanceB < amountBDesired) {
         const approveTx = await tokenBContract.approve(routerAddress, amountBDesired);
-        toast.info(`Approving ${await tokenBContract.symbol()}...`);
+        let symbolB = 'Token B';
+        try {
+          symbolB = await tokenBContract.symbol();
+        } catch (e) {
+          // Fallback for contracts without symbol() function
+          if (tokenB === getCurrentChainAddress(ContractName.SENIOR_TOKEN)) {
+            symbolB = 'SENIOR';
+          } else if (tokenB === getCurrentChainAddress(ContractName.JUNIOR_TOKEN)) {
+            symbolB = 'JUNIOR';
+          }
+        }
+        toast.info(`Approving ${symbolB}...`);
         await approveTx.wait();
       }
 
