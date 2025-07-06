@@ -254,15 +254,36 @@ npx hardhat ignition deploy ignition/modules/RiskToken.ts --network flow-testnet
 
 ## 📄 Contract Addresses
 
-### Flow Testnet
-- **RiskVault**: Successfully deployed (see deployment artifacts)
-- **CV-SENIOR Token**: Auto-deployed by RiskVault
-- **CV-JUNIOR Token**: Auto-deployed by RiskVault
+### Flow Testnet (Verified on [Flowscan](https://evm-testnet.flowscan.io/))
 
-### Development
-- **aUSDC Mock**: Available for testing
-- **cUSDT Mock**: Available for testing
-- **Uniswap V2 Contracts**: Included for potential trading integration
+All contracts are verified and viewable on the Flow EVM Testnet explorer:
+
+#### Core Protocol Contracts
+- **RiskVault**: [`0x0b6371795b2Ef3149dbd3803eeaf8576282C127A`](https://evm-testnet.flowscan.io/address/0x0b6371795b2Ef3149dbd3803eeaf8576282C127A#code)
+- **CV-SENIOR Token**: [`0xd3ef53FC2874522Aee118640f6e4B632573Ea474`](https://evm-testnet.flowscan.io/address/0xd3ef53FC2874522Aee118640f6e4B632573Ea474#code)
+- **CV-JUNIOR Token**: [`0xA050373612033aA1440a549496400cA48a84Cbdd`](https://evm-testnet.flowscan.io/address/0xA050373612033aA1440a549496400cA48a84Cbdd#code)
+
+#### Mock Yield Tokens (for testing)
+- **MockAUSDC**: [`0x27448B112B42c930915bF3953A691c80BdcE7208`](https://evm-testnet.flowscan.io/address/0x27448B112B42c930915bF3953A691c80BdcE7208#code)
+- **MockCUSDT**: [`0x39b0982322FfbFd17Bc705ef6E55dc92581337Ef`](https://evm-testnet.flowscan.io/address/0x39b0982322FfbFd17Bc705ef6E55dc92581337Ef#code)
+
+#### Uniswap V2 Contracts (for trading)
+- **UniswapV2Factory**: [`0x59Bb52f2F93eA480df5d4549C12F5062Adccd087`](https://evm-testnet.flowscan.io/address/0x59Bb52f2F93eA480df5d4549C12F5062Adccd087#code)
+- **UniswapV2Router02**: [`0x0357D34e591C25b78565611C9d3401553Fff9737`](https://evm-testnet.flowscan.io/address/0x0357D34e591C25b78565611C9d3401553Fff9737#code)
+- **WETH**: [`0xFb01cCbf406E820163911D0A37d89Bab72A85399`](https://evm-testnet.flowscan.io/address/0xFb01cCbf406E820163911D0A37d89Bab72A85399#code)
+- **CV-SENIOR/CV-JUNIOR Pair**: [`0x8609546aE826d023c804a48218FD5EC3037e2059`](https://evm-testnet.flowscan.io/address/0x8609546aE826d023c804a48218FD5EC3037e2059#code)
+
+### Contract Verification
+
+All contracts are verified with source code and constructor arguments visible on Flowscan. Use the following command to verify additional deployments:
+
+```bash
+# Verify all contracts
+npm run verify:flow-all
+
+# Verify individual contract
+npm run verify:flow-testnet <CONTRACT_ADDRESS> "constructor_arg1" "constructor_arg2"
+```
 
 ## 🤝 Contributing
 
