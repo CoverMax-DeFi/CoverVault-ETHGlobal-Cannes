@@ -55,7 +55,7 @@ const config: HardhatUserConfig = {
       url: "https://rpc.sepolia.mantle.xyz",
       chainId: 5003,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 1000000000, // 1 gwei
+      gasPrice: 20000000000, // 20 gwei (as per Mantle docs)
     },
   },
   gasReporter: {
@@ -70,7 +70,6 @@ const config: HardhatUserConfig = {
       hederaTestnet: "no-api-key-required",
       // Mantle networks
       mantleTestnet: process.env.MANTLESCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
-      mantle: process.env.MANTLESCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
       // Other networks
       mainnet: process.env.ETHERSCAN_API_KEY || "",
       sepolia: process.env.ETHERSCAN_API_KEY || "",
