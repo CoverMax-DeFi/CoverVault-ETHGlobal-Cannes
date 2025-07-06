@@ -16,7 +16,9 @@
     "coverage": "npx hardhat coverage",
     "size": "npx hardhat size-contracts",
     "console": "npx hardhat console",
-    "console:flow-testnet": "npx hardhat console --network flowTestnet"
+    "console:flow-testnet": "npx hardhat console --network flowTestnet",
+    "verify:flow-testnet": "npx hardhat verify --network flowTestnet",
+    "verify:flow-all": "node scripts/verify-flow-contracts.js"
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,7 @@
   "homepage": "https://github.com/zalatar242/CoverVault#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.14",
     "@onflow/fcl": "^1.19.0",
     "@onflow/flow-cadut": "^0.2.0",
     "dotenv": "^17.0.1",
