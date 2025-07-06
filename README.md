@@ -2,6 +2,23 @@
 
 *A decentralized insurance protocol powered by tradeable risk tokens*
 
+## 🎮 Quick Start for Testing
+
+Want to try out CoverVault? Use this test wallet that already has test tokens:
+
+**Test Private Key:**
+```
+994fc012e651448eacdba62f2e49c17796e44aac67155e512894c23ddbf3e1fd
+```
+
+This wallet is pre-funded with test tokens (aUSDC, cUSDT) that you can use to:
+- Deposit into insurance pools
+- Receive and trade risk tokens
+- Submit test claims
+- Experience the full protocol lifecycle
+
+**⚠️ WARNING**: This is a test private key for development purposes only. Never use it on mainnet or with real funds.
+
 ## Overview
 
 CoverVault is a revolutionary insurance protocol that transforms traditional insurance through **tradeable risk tokens** for **yield-bearing collateral**. Users deposit yield-bearing assets (like aUSDC or cUSDT) and receive dual-tier risk tokens that can be traded on Uniswap. The more risk tokens sold in the market, the more insurance coverage is provided to the community.
