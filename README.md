@@ -6,6 +6,12 @@
 
 CoverVault is a revolutionary insurance protocol that transforms traditional insurance through **tradeable risk tokens** for **yield-bearing collateral**. Users deposit yield-bearing assets (like aUSDC or cUSDT) and receive dual-tier risk tokens that can be traded on Uniswap. The more risk tokens sold in the market, the more insurance coverage is provided to the community.
 
+## 🎥 Demo Video
+
+[![CoverVault Demo](https://img.youtube.com/vi/CvOf5WiP0co/0.jpg)](https://youtu.be/CvOf5WiP0co)
+
+Watch CoverVault in action: https://youtu.be/CvOf5WiP0co
+
 ## 🧠 How It Works
 
 ### The Insurance Mechanism
