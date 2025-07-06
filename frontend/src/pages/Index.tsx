@@ -98,7 +98,9 @@ const Index = () => {
                 Tradeable Tokens
               </span>
             </h1>
-            
+            <p className="text-lg text-blue-300 mb-4 font-semibold">
+              For safety-first users and high-upside seekers—choose your risk, earn your yield.
+            </p>
             <p className="text-xl text-slate-300 mb-8 leading-relaxed max-w-2xl mx-auto">
               Deposit your assets → Get risk tokens → Trade them on Uniswap.
               <br />
@@ -134,28 +136,37 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* User Types Section */}
       <section className="relative z-10 py-24 bg-slate-800/30">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Built for Risk Tokenization
+              Who is CoverVault for?
             </h2>
             <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-              Revolutionary protocol that transforms insurance risk into tradeable tokens on Uniswap
+              Two distinct user types—choose your risk, earn your yield.
             </p>
           </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="bg-slate-800/50 border-slate-700 backdrop-blur-sm p-6 hover:bg-slate-800/70 transition-all duration-300 group">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
-                  {feature.icon}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+            <Card className="flex-1 flex flex-row items-center gap-4 bg-slate-800/80 border-blue-600 border-2 p-6 shadow-lg">
+              <Shield className="w-10 h-10 text-blue-400" />
+              <div>
+                <div className="text-xl font-bold text-blue-300">For Safety-First Users</div>
+                <div className="text-slate-300 text-base">
+                  <span className="text-blue-400 font-medium">Benefit:</span> Deposit yield tokens, sell of your risk tokens to get "insured-yield", and withdraw from unharmed with priority during emergencies.
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-                <p className="text-slate-300 leading-relaxed">{feature.description}</p>
-              </Card>
-            ))}
+              </div>
+            </Card>
+            <Card className="flex-1 flex flex-row items-center gap-4 bg-slate-800/80 border-amber-500 border-2 p-6 shadow-lg">
+              <TrendingUp className="w-10 h-10 text-amber-400" />
+              <div>
+                <div className="text-xl font-bold text-amber-300">For High-Upside Seekers</div>
+                <div className="text-slate-300 text-base">
+                  <span className="text-amber-400 font-medium">Benefit:</span> Deposit yield tokens, arbitrage the risk tokens, and manage the Junior Tokens for higher yield still with flexible risk exposure.<br />
+
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </section>
