@@ -47,13 +47,13 @@ const verificationConfigs = [
   {
     name: 'RiskToken (Senior)',
     address: deployedAddresses['RiskTokenModule#seniorTokenContract'],
-    constructorArgs: ['CoverMax Senior Token', 'CM-SENIOR'],
+    constructorArgs: ['CoverVault Senior Token', 'CV-SENIOR'],
     contract: 'contracts/RiskToken.sol:RiskToken'
   },
   {
     name: 'RiskToken (Junior)',
     address: deployedAddresses['RiskTokenModule#juniorTokenContract'], 
-    constructorArgs: ['CoverMax Junior Token', 'CM-JUNIOR'],
+    constructorArgs: ['CoverVault Junior Token', 'CV-JUNIOR'],
     contract: 'contracts/RiskToken.sol:RiskToken'
   }
 ];
